@@ -1,0 +1,35 @@
+// curve: https://github.com/Zokrates/ZoKrates/blob/8699128ad0034f2f60d7de60d397ae7986bb23fe/zokrates_js/index.d.ts#L4
+// #pragma curve bls12_377
+from "../../point" import Point
+from "../../params" import CurveParams
+from "add" import point_addition
+from "double" import point_double
+from "negate" import point_negate
+
+def main() -> field:
+    // Test with a simple curve y^2 = x^3 + 20x + 8 (mod 23)
+    CurveParams simple_params = CurveParams {Fp: 23, Fq: 31, a:20, b: 8}
+
+    Point g1 = Point {x: 16, y: 13}
+    Point g2 = Point {x: 18, y: 6}
+
+    // Test double operation
+    Point double_result = point_double(g1, simple_params)
+    assert(double_result.x == g2.x)
+    assert(double_result.y == g2.y)
+
+    // Test addition operation
+    Point add_result = point_addition(g1, g2, simple_params)
+    assert(add_result.x == 7)
+    assert(add_result.y == 13)
+
+    // Test negate operation
+    Point negate_result = point_negate(g1, simple_params)
+    assert(negate_result.x == 16)
+    assert(negate_result.y == 10)
+
+    field zero = 0
+    field one = 1
+    field p = zero - one
+
+    return p

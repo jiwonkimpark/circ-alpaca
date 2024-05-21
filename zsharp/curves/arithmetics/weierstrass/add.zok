@@ -1,7 +1,7 @@
-from "../point" import Point
-from "../params" import CurveParams
-from "../../field/mod_arithmetic" import field_minus
-from "weierstrassDouble" import x_star
+from "../../point" import Point
+from "../../params" import CurveParams
+from "../../../field/mod_arithmetic" import field_minus
+from "double" import x_star
 
 def point_addition(Point pt1, Point pt2, CurveParams params) -> Point:
     field y_delta = field_minus(pt2.y, pt1.y, params.Fp)
