@@ -1,6 +1,6 @@
-from "../point" import Point
-from "../params" import CurveParams
-from "../../field/mod_arithmetic" import field_minus
+from "../../point" import Point
+from "../../params" import CurveParams
+from "../../../field/mod_arithmetic" import field_minus
 
 // TODO: implement field addition and multiplication that safely handle overflow
 
