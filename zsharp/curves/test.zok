@@ -1,22 +1,29 @@
+// curve: https://github.com/Zokrates/ZoKrates/blob/8699128ad0034f2f60d7de60d397ae7986bb23fe/zokrates_js/index.d.ts#L4
+// #pragma curve bls12_377
 from "point" import Point
-from "curve" import CurveConst
-from "operation" import point_double, point_addition
+from "params" import CurveParams
+from "arithmetics/weierstrassAdd" import point_addition
+from "arithmetics/weierstrassDouble" import point_double
 
-def main() -> bool:
+def main() -> field:
     // Test with a simple curve y^2 = x^3 + 20x + 8 (mod 23)
-    CurveConst simple_curve = CurveConst {Fp: 23, Fq: 31, a:20, b: 8}
+    CurveParams simple_params = CurveParams {Fp: 23, Fq: 31, a:20, b: 8}
 
     Point g1 = Point {x: 16, y: 13}
     Point g2 = Point {x: 18, y: 6}
 
     // Test double operation
-    Point g1_doubled = point_double(g1, simple_curve)
+    Point g1_doubled = point_double(g1, simple_params)
     assert(g1_doubled.x == g2.x)
     assert(g1_doubled.y == g2.y)
 
     // Test addition operation
-    Point g3 = point_addition(g1, g2, simple_curve)
+    Point g3 = point_addition(g1, g2, simple_params)
     assert(g3.x == 7)
     assert(g3.y == 13)
 
-    return true
+    field zero = 0
+    field one = 1
+    field p = zero - one
+
+    return p
