@@ -1,0 +1,30 @@
+// A struct to express elliptic curve in short Weierstrass form: y^2 = x^3 + ax + b (mod Fp)
+struct CurveParams {
+    field Fp
+    field Fq
+    field a
+    field b
+}
+
+const CurveParams PALLAS_PARAMS = CurveParams {
+    // Base order and scalar order
+    Fp: 28948022309329048855892746252171976963363056481941560715954676764349967630337,
+    Fq: 28948022309329048855892746252171976963363056481941647379679742748393362948097,
+
+    // Short Weierstrass params
+    a: 0,
+    b: 5
+}
+
+const CurveParams VESTA_PARAMS = CurveParams {
+    // Base order and scalar order
+    Fp: 28948022309329048855892746252171976963363056481941647379679742748393362948097,
+    Fq: 28948022309329048855892746252171976963363056481941560715954676764349967630337,
+
+    // Short Weierstrass params
+    a: 0,
+    b: 5
+}
+
+def main() -> CurveParams:
+    return VESTA_PARAMS

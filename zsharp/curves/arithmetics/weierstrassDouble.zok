@@ -1,0 +1,46 @@
+from "../point" import Point
+from "../params" import CurveParams
+from "../../field/mod_arithmetic" import field_minus
+
+// TODO: implement field addition and multiplication that safely handle overflow
+
+// helper function for point_double
+// 3 * x^2 + a
+def x_prime(field x, field a, field Fp) -> field:
+    field x_squared = (x * x) % Fp
+    field x_squared_times_3 = (3 * x_squared) % Fp
+
+    return (x_squared_times_3 + a) % Fp
+
+
+// helper function for point_double
+// 2 * x1 + x2
+def x_star(field x1, field x2, field Fp) -> field:
+    field x1_times_2 = (2 * x1) % Fp
+    return (x1_times_2 + x2) % Fp
+
+
+// helper function for point_double
+// 2 * y
+def y_prime(field y, field Fp) -> field:
+    return (2 * y) % Fp
+
+
+def point_double(Point pt, CurveParams params) -> Point:
+    field x_prime = x_prime(pt.x, params.a, params.Fp)
+    field y_prime = y_prime(pt.y, params.Fp)
+
+    field mu = (x_prime / y_prime) % params.Fp
+    field mu_squared = (mu * mu) % params.Fp
+    field mu_squared_minus_x = field_minus(mu_squared, pt.x, params.Fp)
+    field x3 = field_minus(mu_squared_minus_x, pt.x, params.Fp)
+
+    field x_star = x_star(pt.x, pt.x, params.Fp)
+    field x_star_times_x_prime = (x_star * x_prime) % params.Fp
+    field gamma = (x_star_times_x_prime /y_prime) % params.Fp
+    field mu_cube = (mu_squared * mu) % params.Fp
+
+    field gamma_minus_mu_cube = field_minus(gamma, mu_cube, params.Fp)
+    field y3 = field_minus(gamma_minus_mu_cube, pt.y, params.Fp)
+
+    return Point{x: x3, y: y3}
