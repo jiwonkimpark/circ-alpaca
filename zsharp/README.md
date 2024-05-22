@@ -12,5 +12,11 @@ More specific documentation in /README_zsharp.md
 
 ### Run a ZSharp program
 You can run ZSharp program by specifying the interpreter and the program's path.
-For example:
-`./target/release/examples/zxi ./zsharp/curves/test.zok`
+For example,
+
+    ./target/release/examples/zxi ./zsharp/curves/test.zok
+
+
+You can also change `field` by setting a custom field "modulus" in cli such as: 
+
+    ./target/release/examples/zxi --field-custom-modulus 28948022309329048855892746252171976963363056481941560715954676764349967630337 ./zsharp/curves/test.zok

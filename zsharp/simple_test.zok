@@ -1,0 +1,7 @@
+def main() -> field:
+    // check if custom field modulus works
+    field zero = 0
+    field one = 1
+    field p = zero - one
+
+    return p
