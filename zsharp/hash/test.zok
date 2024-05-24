@@ -2,4 +2,4 @@ import "poseidon"
 
 def main() -> field:
     field[2] inputs = [1, 2]
-    return poseidon(inputs)
+    return poseidon(inputs, false)
