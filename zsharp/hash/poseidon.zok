@@ -1,6 +1,9 @@
 // Modified /zokrates_stdlib/stdlib/hashes/poseidon/poseidon.zok for Pasta Curve
 
-from "constants" import N_MAX, T_MAX, CONST_SIZE_MAX, ROUND_CONSTS, MDS_MATRIX
+from "constants/params" import N_MAX, T_MAX, CONST_SIZE_MAX
+from "constants/round_consts" import ROUND_CONSTS
+from "constants/mds_Fp" import MDS_MATRIX as Fp_MDS_MATRIX
+from "constants/mds_Fq" import MDS_MATRIX as Fq_MDS_MATRIX
 
 def ark<N>(field[N] state, field[CONST_SIZE_MAX] c, u32 it) -> field[N]:
     for u32 i in 0..N do
@@ -26,7 +29,7 @@ def mix<N>(field[N] state, field[9][9] m) -> field[N]:
     endfor
     return out
 
-def main<N>(field[N] inputs) -> field:
+def main<N>(field[N] inputs, bool Fp) -> field:
     assert(N > 0 && N <= N_MAX) // max 8 inputs
 
     u32 t = N + 1
@@ -42,7 +45,7 @@ def main<N>(field[N] inputs) -> field:
     // This should be revisited once compiler limitations are gone.
 
     field[CONST_SIZE_MAX]  c = ROUND_CONSTS[t - 2]
-    field[T_MAX][T_MAX]    m = MDS_MATRIX[t - 2]
+    field[T_MAX][T_MAX]    m = if Fp then Fp_MDS_MATRIX[t - 2] else Fq_MDS_MATRIX[t-2] fi
 
     field[t] state = [0; t]
     for u32 i in 1..t do

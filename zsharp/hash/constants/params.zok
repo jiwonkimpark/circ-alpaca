@@ -1,0 +1,3 @@
+const u32 N_MAX = 8
+const u32 T_MAX = 9
+const u32 CONST_SIZE_MAX = 585 // maximum number of t * (f + p)
