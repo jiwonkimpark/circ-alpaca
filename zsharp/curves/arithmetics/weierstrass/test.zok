@@ -1,12 +1,11 @@
-// curve: https://github.com/Zokrates/ZoKrates/blob/8699128ad0034f2f60d7de60d397ae7986bb23fe/zokrates_js/index.d.ts#L4
-// #pragma curve bls12_377
 from "../../point" import Point
 from "../../params" import CurveParams
 from "add" import point_addition
 from "double" import point_double
 from "negate" import point_negate
+from "scalar_mul" import point_scalar_multiplication
 
-def main() -> field:
+def main() -> bool:
     // Test with a simple curve y^2 = x^3 + 20x + 8 (mod 23)
     CurveParams simple_params = CurveParams {Fp: 23, Fq: 31, a:20, b: 8}
 
@@ -28,8 +27,32 @@ def main() -> field:
     assert(negate_result.x == 16)
     assert(negate_result.y == 10)
 
-    field zero = 0
-    field one = 1
-    field p = zero - one
+    // Test scalar multiplication operation
+    bool[2] two = [false, true] // 2 in little endian and boolean format
+    Point two_G = point_scalar_multiplication(g1, two, simple_params)
+    assert(two_G.x == g2.x)
+    assert(two_G.y == g2.y)
 
-    return p
+    bool[2] three = [true, true] // 3 in little endian and boolean format
+    Point three_G = point_scalar_multiplication(g1, three, simple_params)
+    assert(three_G.x == 7)
+    assert(three_G.y == 13)
+
+    bool[5] thirty = [false, true, true, true, true] // 30 in little endian and boolean format
+    Point thirty_G = point_scalar_multiplication(g1, thirty, simple_params)
+    assert(thirty_G.x == 16)
+    assert(thirty_G.y == 10)
+
+    // 31G should be the point at infinity
+    bool[5] thirty_one = [true, true, true, true, true] // 31 in little endian and boolean format
+    Point thirty_one_G = point_scalar_multiplication(g1, thirty_one, simple_params)
+    assert(thirty_one_G.x == 0)
+    assert(thirty_one_G.y == 0)
+
+    // 31G should be the same as G
+    bool[6] thirty_two = [false, false, false, false, false, true] // 32 in little endian and boolean format
+    Point thirty_two_G = point_scalar_multiplication(g1, thirty_two, simple_params)
+    assert(thirty_two_G.x == g1.x)
+    assert(thirty_two_G.y == g1.y)
+
+    return true

@@ -1,0 +1,34 @@
+from "double" import point_double
+from "add" import point_addition
+from "negate" import point_negate
+from "../../point" import Point
+from "../../params" import CurveParams
+
+// struct to store the temporary result values during scalar multiplication
+struct Result {
+    bool point_at_infinity
+    Point pt
+}
+
+// a helper function that calculates the next result when current point is not at infinity
+def update_result_when_not_infinity(Result result, Point addend, CurveParams params) -> Result:
+    Result updated = if result.pt == point_negate(addend, params) then Result {point_at_infinity: true, pt: Point {x: 0f, y: 0f}} else Result {point_at_infinity: false, pt: point_addition(result.pt, addend, params)} fi
+    return updated
+
+// a helper function that calculates the updated result
+def update_result(Result result, Point addend, CurveParams params) -> Result:
+    Result updated = if result.point_at_infinity == true then Result {point_at_infinity: false, pt: addend} else update_result_when_not_infinity(result, addend, params) fi
+    return updated
+
+// calculates s * pt
+// s is the little endian bit representation of field s
+def point_scalar_multiplication<N>(Point pt, bool[N] s, CurveParams params) -> Point:
+    Result result = Result {point_at_infinity: true, pt: Point {x: 0f, y: 0f}}
+    Point addend = pt
+
+    for u32 i in 0..N do
+        result = if s[i] == true then update_result(result, addend, params) else result fi
+        addend = point_double(addend, params)
+    endfor
+
+    return result.pt
