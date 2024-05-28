@@ -1,7 +1,5 @@
 from "../../point" import Point
-from "../../params" import CurveParams
-from "../../../field/mod_arithmetic" import field_minus
 
-def point_negate(Point pt, CurveParams params) -> Point:
-    field minus_y = field_minus(0f, pt.y, params.Fp)
+def point_negate(Point pt) -> Point:
+    field minus_y = 0f - pt.y
     return Point {x: pt.x, y: minus_y}

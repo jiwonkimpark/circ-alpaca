@@ -13,45 +13,45 @@ def main() -> bool:
     Point g2 = Point {x: 18, y: 6}
 
     // Test double operation
-    Point double_result = point_double(g1, simple_params)
+    Point double_result = point_double(g1, simple_params.a)
     assert(double_result.x == g2.x)
     assert(double_result.y == g2.y)
 
     // Test addition operation
-    Point add_result = point_addition(g1, g2, simple_params)
+    Point add_result = point_addition(g1, g2)
     assert(add_result.x == 7)
     assert(add_result.y == 13)
 
     // Test negate operation
-    Point negate_result = point_negate(g1, simple_params)
+    Point negate_result = point_negate(g1)
     assert(negate_result.x == 16)
     assert(negate_result.y == 10)
 
     // Test scalar multiplication operation
     bool[2] two = [false, true] // 2 in little endian and boolean format
-    Point two_G = point_scalar_multiplication(g1, two, simple_params)
+    Point two_G = point_scalar_multiplication(g1, two, simple_params.a)
     assert(two_G.x == g2.x)
     assert(two_G.y == g2.y)
 
     bool[2] three = [true, true] // 3 in little endian and boolean format
-    Point three_G = point_scalar_multiplication(g1, three, simple_params)
+    Point three_G = point_scalar_multiplication(g1, three, simple_params.a)
     assert(three_G.x == 7)
     assert(three_G.y == 13)
 
     bool[5] thirty = [false, true, true, true, true] // 30 in little endian and boolean format
-    Point thirty_G = point_scalar_multiplication(g1, thirty, simple_params)
+    Point thirty_G = point_scalar_multiplication(g1, thirty, simple_params.a)
     assert(thirty_G.x == 16)
     assert(thirty_G.y == 10)
 
     // 31G should be the point at infinity
     bool[5] thirty_one = [true, true, true, true, true] // 31 in little endian and boolean format
-    Point thirty_one_G = point_scalar_multiplication(g1, thirty_one, simple_params)
+    Point thirty_one_G = point_scalar_multiplication(g1, thirty_one, simple_params.a)
     assert(thirty_one_G.x == 0)
     assert(thirty_one_G.y == 0)
 
     // 31G should be the same as G
     bool[6] thirty_two = [false, false, false, false, false, true] // 32 in little endian and boolean format
-    Point thirty_two_G = point_scalar_multiplication(g1, thirty_two, simple_params)
+    Point thirty_two_G = point_scalar_multiplication(g1, thirty_two, simple_params.a)
     assert(thirty_two_G.x == g1.x)
     assert(thirty_two_G.y == g1.y)
 

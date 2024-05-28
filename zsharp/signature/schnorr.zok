@@ -30,13 +30,13 @@ def generate_e(Point pk, field[4] msg, SchnorrSignature sign) -> field:
 
 
 def get_sG(Point g, bool[256] s, CurveParams params) -> Point:
-    Point sG = multiply(g, s, params)
+    Point sG = multiply(g, s, params.a)
     return sG
 
 
 def get_ex_plus_r_G(Point pk, bool[256] e, Point R, CurveParams params) -> Point:
-    Point exG = multiply(pk, e, params)
-    Point ex_plus_r_G = add(exG, R, params)
+    Point exG = multiply(pk, e, params.a)
+    Point ex_plus_r_G = add(exG, R)
     return ex_plus_r_G
 
 

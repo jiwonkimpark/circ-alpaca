@@ -1,21 +1,19 @@
 from "../../point" import Point
-from "../../params" import CurveParams
-from "../../../field/mod_arithmetic" import field_minus
 from "double" import x_star
 
-def point_addition(Point pt1, Point pt2, CurveParams params) -> Point:
-    field y_delta = field_minus(pt2.y, pt1.y, params.Fp)
-    field x_delta = field_minus(pt2.x, pt1.x, params.Fp)
-    field mu = (y_delta / x_delta) % params.Fp
-    field mu_squared = (mu * mu) % params.Fp
-    field mu_squared_minus_x1 = field_minus(mu_squared, pt1.x, params.Fp)
-    field x3 = field_minus(mu_squared_minus_x1, pt2.x, params.Fp)
+def point_addition(Point pt1, Point pt2) -> Point:
+    field y_delta = pt2.y - pt1.y
+    field x_delta = pt2.x - pt1.x
+    field mu = y_delta / x_delta
+    field mu_squared = mu * mu
+    field mu_squared_minus_x1 = mu_squared - pt1.x
+    field x3 = mu_squared_minus_x1 - pt2.x
 
-    field x_star = x_star(pt1.x, pt2.x, params.Fp)
-    field x_star_times_y_delta = (x_star * y_delta) % params.Fp
-    field gamma = (x_star_times_y_delta / x_delta) % params.Fp
-    field mu_cube = (mu_squared * mu) % params.Fp
-    field gamma_minus_mu_cube = field_minus(gamma, mu_cube, params.Fp)
-    field y3 = field_minus(gamma_minus_mu_cube, pt1.y, params.Fp)
+    field x_star = x_star(pt1.x, pt2.x)
+    field x_star_times_y_delta = (x_star * y_delta)
+    field gamma = (x_star_times_y_delta / x_delta)
+    field mu_cube = mu_squared * mu
+    field gamma_minus_mu_cube = gamma - mu_cube
+    field y3 = gamma_minus_mu_cube - pt1.y
 
     return Point{x: x3, y: y3}

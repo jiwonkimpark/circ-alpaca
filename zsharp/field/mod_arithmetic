@@ -1,2 +1,0 @@
-def field_minus(field a, field b, field Fp) -> field:
-    return if (a >= b) then (a - b) % Fp else Fp - (b - a) fi
