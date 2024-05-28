@@ -1,0 +1,56 @@
+import "../hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams
+from "../curves/arithmetics/weierstrass/scalar_mul" import point_scalar_multiplication as multiply
+from "../curves/arithmetics/weierstrass/add" import point_addition as add
+
+
+struct SchnorrSignature {
+    Point R // (Fq, Fq)
+    bool[256] s // Fp in boolean bits
+}
+
+// Get `e` to check sG == (e * x + r)G
+// Run poseidon hash on (pk, sign.R, msg) and get e
+// The type of e is Fq, which is same as the base fields of pk, sign.R and msg.
+def generate_e(Point pk, field[4] msg, SchnorrSignature sign) -> field:
+    field[8] hash_msg = [0; 8] // C2::Base (Fq)
+    hash_msg[0] = pk.x
+    hash_msg[1] = pk.y
+    hash_msg[2] = sign.R.x
+    hash_msg[3] = sign.R.y
+    hash_msg[4] = msg[0]
+    hash_msg[5] = msg[1]
+    hash_msg[6] = msg[2]
+    hash_msg[7] = msg[3]
+
+    field e = poseidon(hash_msg, false) // based on Fq
+
+    return e
+
+
+def get_sG(Point g, bool[256] s, CurveParams params) -> Point:
+    Point sG = multiply(g, s, params)
+    return sG
+
+
+def get_ex_plus_r_G(Point pk, bool[256] e, Point R, CurveParams params) -> Point:
+    Point exG = multiply(pk, e, params)
+    Point ex_plus_r_G = add(exG, R, params)
+    return ex_plus_r_G
+
+
+// The code that actually check sG == (e * x + r)G
+// Parameters
+// `pk`: public key, point of (Fq, Fq) (C2::Base)
+// `msg`: the message for the signature. In Mastadon's project case, msg consists of four Fq elements (C1::Scalar)
+// `sign`: the schnorr signature to verify.
+// `e`: the value of poseidon(pk, sign.R, msg), which was converted to Fp and then represented as bit array.
+// `params`: the curve parameter needed for arithmetic operations
+def verify(Point pk, SchnorrSignature sign, Point G, bool[256] e, CurveParams params) -> bool:
+    Point left_hand = get_sG(G, sign.s, params) // sG
+    Point right_hand = get_ex_plus_r_G(pk, e, sign.R, params) // e * xG + rG = (ex + r)G
+
+    bool result = if left_hand.x == right_hand.x && left_hand.y == right_hand.y then true else false fi
+
+    return result
