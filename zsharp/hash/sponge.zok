@@ -1,0 +1,51 @@
+import "poseidon"
+from "../../../curves/arithmetics/weierstrass/add" import point_addition as add
+
+struct Sponge {
+    u32 capacity
+    u32 rate
+    u32 absorb_pos
+    u32 squeeze_pos
+
+}
+
+struct Hasher {
+    u64 x                   // u128 in neptune
+    u64 x_i                 // u128 in neptune
+    u64 state               // u128 in neptune
+    u32 current_op_count    // `SpongeOp` in neptune
+}
+
+// TODO: implement start
+// def start(u32 domain_separator):
+
+
+def absorb<N>(Sponge sponge, u32 length, field[N] elements) -> field[N]
+    assert(length == N)
+
+    for u32 i in 0..N do
+        field element = elements[i]
+        // TODO: need to call permutation when sponge.absorb_pos == sponge.rate
+        // if sponge.absorb_pos == sponge.rate then
+
+        field old = elements[sponge.capacity + sponge.absorb_pos]
+        field new = add(old, element)
+        elements[sponge.capacity + sponge.absorb_pos] = new
+        sponge.absorb_pos = sponge.absorb_pos + 1
+    endfor
+
+    sponge.squeeze_pos = sponge.rate
+
+    return elements
+
+
+// We assume that the output of squeeze has only one field
+def squeeze<N>(Sponge sponge, field[N] elements) -> field:
+    // TODO: need to call permutation
+    self.squeeze_pos = 0
+    self.absorb_pos = 0
+
+    field out = elements[sponge.capacity + sponge.squeeze_pos]
+    sponge.squeeze_pos = sponge.squeeze_pos + 1
+
+    return out
