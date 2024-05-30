@@ -19,6 +19,6 @@ def hex_to_field(hex_str, modulus):
 
 
 if __name__=="__main__":
-    hex_str = '0x0839667774a319ed574d9c263ef4fb27edefbee1934b1953d35c222525867caa'
-    field_value = hex_to_field(hex_str, F_p)
+    hex_str = '0x2e837f148a7c5510a0c660f60c35977963192d8c9405e074cba72a20e40831e7'
+    field_value = hex_to_field(hex_str, F_q)
     print(field_value)
