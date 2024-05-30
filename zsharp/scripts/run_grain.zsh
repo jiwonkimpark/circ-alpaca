@@ -1,0 +1,17 @@
+#!/usr/bin/env zsh
+
+set -ex
+
+disable -r time
+
+FILE=generate_parameters_grain.sage
+FIELD_SIZE=255
+T=9
+R_F=8
+R_P=57
+
+F_p=0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001
+F_q=0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001
+
+sage $FILE 1 0 $FIELD_SIZE $T $R_F $R_P $F_p
+sage $FILE 1 0 $FIELD_SIZE $T $R_F $R_P $F_q
