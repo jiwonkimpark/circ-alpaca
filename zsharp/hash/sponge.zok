@@ -1,26 +1,32 @@
 import "poseidon"
-from "../../../curves/arithmetics/weierstrass/add" import point_addition as add
+from "../curves/point" import Point
+from "../curves/arithmetics/weierstrass/add" import point_addition as add
 
 struct Sponge {
-    u32 capacity
     u32 rate
     u32 absorb_pos
     u32 squeeze_pos
-
 }
 
-struct Hasher {
-    u64 x                   // u128 in neptune
-    u64 x_i                 // u128 in neptune
-    u64 state               // u128 in neptune
-    u32 current_op_count    // `SpongeOp` in neptune
-}
-
-// TODO: implement start
-// def start(u32 domain_separator):
+const field HASHER_BASE = 340282366920938463463374607431768211297
 
 
-def absorb<N>(Sponge sponge, u32 length, field[N] elements) -> field[N]
+def capacity_element(field domain_separator) -> field:
+    return HASHER_BASE + domain_separator
+
+
+// Get initialized vector I
+def start(u32 rate, field domain_separator) -> field[rate]:
+    u32 elements_size = rate + 1
+    field[elements_size] elements = [0; elements_size]
+
+    field capacity_element = capacity_element(domain_separator)
+    elements[0] = capacity_element
+
+    return elements
+
+
+def absorb<N>(Sponge sponge, u32 length, field[N] elements) -> field[N]:
     assert(length == N)
 
     for u32 i in 0..N do
