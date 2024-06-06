@@ -3,6 +3,7 @@ from "../curves/point" import Point
 from "../curves/params" import CurveParams
 from "../curves/arithmetics/weierstrass/scalar_mul" import point_scalar_multiplication as multiply
 from "../curves/arithmetics/weierstrass/add" import point_addition as add
+import "../../third_party/ZoKrates/zokrates_stdlib/stdlib/utils/pack/bool/unpack256"
 
 
 struct SchnorrSignature {
@@ -15,16 +16,16 @@ struct SchnorrSignature {
 // The type of e is Fq, which is same as the base fields of pk, sign.R and msg.
 def generate_e(Point pk, field[4] msg, SchnorrSignature sign) -> field:
     field[8] hash_msg = [0; 8] // C2::Base (Fq)
-    hash_msg[0] = pk.x
-    hash_msg[1] = pk.y
-    hash_msg[2] = sign.R.x
-    hash_msg[3] = sign.R.y
-    hash_msg[4] = msg[0]
-    hash_msg[5] = msg[1]
-    hash_msg[6] = msg[2]
-    hash_msg[7] = msg[3]
+    hash_msg[0] = msg[0]
+    hash_msg[1] = msg[1]
+    hash_msg[2] = msg[2]
+    hash_msg[3] = msg[3]
+    hash_msg[4] = sign.R.x
+    hash_msg[5] = sign.R.y
+    hash_msg[6] = pk.x
+    hash_msg[7] = pk.y
 
-    field e = poseidon(hash_msg, false) // based on Fq
+    field e = poseidon(hash_msg, 2) // based on Fq
 
     return e
 
@@ -40,6 +41,17 @@ def get_ex_plus_r_G(Point pk, bool[256] e, Point R, CurveParams params) -> Point
     return ex_plus_r_G
 
 
+def unpack_to_le_bits(field f) -> bool[256]:
+    bool[256] unpacked = unpack256(f)
+    bool[256] le_bits = [false; 256]
+
+    for u32 i in 0..256 do
+        le_bits[i] = unpacked[256 - 1 - i]
+    endfor
+
+    return le_bits
+
+
 // The code that actually check sG == (e * x + r)G
 // Parameters
 // `pk`: public key, point of (Fq, Fq) (C2::Base)
@@ -47,9 +59,14 @@ def get_ex_plus_r_G(Point pk, bool[256] e, Point R, CurveParams params) -> Point
 // `sign`: the schnorr signature to verify.
 // `e`: the value of poseidon(pk, sign.R, msg), which was converted to Fp and then represented as bit array.
 // `params`: the curve parameter needed for arithmetic operations
-def verify(Point pk, SchnorrSignature sign, Point G, bool[256] e, CurveParams params) -> bool:
+def verify(Point pk, field[4] msg, SchnorrSignature sign, CurveParams params) -> bool:
+    Point G = Point {x: 28948022309329048855892746252171976963363056481941647379679742748393362948096, y: 2 }
+
+    field e = generate_e(pk, msg, sign)
+    bool[256] e_le_bits = unpack_to_le_bits(e)
+
     Point left_hand = get_sG(G, sign.s, params) // sG
-    Point right_hand = get_ex_plus_r_G(pk, e, sign.R, params) // e * xG + rG = (ex + r)G
+    Point right_hand = get_ex_plus_r_G(pk, e_le_bits, sign.R, params) // e * xG + rG = (ex + r)G
 
     bool result = if left_hand.x == right_hand.x && left_hand.y == right_hand.y then true else false fi
 
