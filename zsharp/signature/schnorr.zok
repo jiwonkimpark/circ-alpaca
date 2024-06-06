@@ -8,7 +8,7 @@ import "../../third_party/ZoKrates/zokrates_stdlib/stdlib/utils/pack/bool/unpack
 
 struct SchnorrSignature {
     Point R // (Fq, Fq)
-    bool[256] s // Fp in boolean bits
+    field s
 }
 
 // Get `e` to check sG == (e * x + r)G
@@ -65,7 +65,8 @@ def verify(Point pk, field[4] msg, SchnorrSignature sign, CurveParams params) ->
     field e = generate_e(pk, msg, sign)
     bool[256] e_le_bits = unpack_to_le_bits(e)
 
-    Point left_hand = get_sG(G, sign.s, params) // sG
+    bool[256] s_le_bits = unpack_to_le_bits(sign.s)
+    Point left_hand = get_sG(G, s_le_bits, params) // sG
     Point right_hand = get_ex_plus_r_G(pk, e_le_bits, sign.R, params) // e * xG + rG = (ex + r)G
 
     bool result = if left_hand.x == right_hand.x && left_hand.y == right_hand.y then true else false fi

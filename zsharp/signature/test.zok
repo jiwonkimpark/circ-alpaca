@@ -40,8 +40,8 @@ def main() -> bool:
 
     Point sign_R = Point {x: 104476197385183429650980097564925907671751505627376022478961498476649653753, y: 19892780398687308202875496938793016706304509028453819561838437009499033877502 }
     field s_field = 8596171361688068822359134169153583845454862639665058759492886950380561862590
-    bool[256] s = unpack_to_le_bits(s_field)
-    SchnorrSignature sign = SchnorrSignature {R: sign_R, s: s}
+    // bool[256] s = unpack_to_le_bits(s_field)
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: s_field }
 
     field e_extracted = 18419634025225268358623092577038283654991312086555718043395112577775908935880
     bool[256] e_extracted_le_bits = unpack_to_le_bits(e_extracted)
