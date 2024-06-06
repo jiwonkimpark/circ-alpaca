@@ -1,6 +1,6 @@
-import "poseidon"
+import "permutation"
 from "../curves/point" import Point
-from "../curves/arithmetics/weierstrass/add" import point_addition as add
+from "constants/capacity_elements" import CAPACITY_ELEMENTS
 
 struct Sponge {
     u32 rate
@@ -8,50 +8,74 @@ struct Sponge {
     u32 squeeze_pos
 }
 
-const field HASHER_BASE = 340282366920938463463374607431768211297
+
+struct PermuteResult {
+    field[9]    state       // the size of state vector is rate + 1 (rate is set to 8)
+    u32         absorb_pos  // the absorb_pos after permutation (set to 0)
+    u32         squeeze_pos // the squeeze_pos after permutation (set to 0)
+}
 
 
-def capacity_element(field domain_separator) -> field:
-    return HASHER_BASE + domain_separator
+struct AbsorbResult {
+    field[9]    state
+    Sponge      sponge
+}
 
 
 // Get initialized vector I
-def start(u32 rate, field domain_separator) -> field[rate]:
-    u32 elements_size = rate + 1
-    field[elements_size] elements = [0; elements_size]
+def start(u32 msg_len, u32 domain_separator) -> field[9]:
+    field[9] elements = [0; 9]
 
-    field capacity_element = capacity_element(domain_separator)
+    field capacity_element = CAPACITY_ELEMENTS[msg_len - 1][domain_separator]
     elements[0] = capacity_element
 
     return elements
 
 
-def absorb<N>(Sponge sponge, u32 length, field[N] elements) -> field[N]:
-    assert(length == N)
+def permute(field[9] state) -> PermuteResult:
+    field[9] permuted = permutation(state, false)
+    PermuteResult result = PermuteResult { state: permuted, absorb_pos: 0, squeeze_pos: 0 }
+    return result
+
+
+def absorb<N>(Sponge sponge, field[9] init_vector, field[N] inputs) -> AbsorbResult:
+    field[9] state = init_vector
 
     for u32 i in 0..N do
-        field element = elements[i]
-        // TODO: need to call permutation when sponge.absorb_pos == sponge.rate
-        // if sponge.absorb_pos == sponge.rate then
+        PermuteResult result = if sponge.absorb_pos == sponge.rate then permute(state) else PermuteResult {state: state, absorb_pos: sponge.absorb_pos, squeeze_pos: sponge.squeeze_pos  } fi
+        state = result.state
+        sponge.absorb_pos = result.absorb_pos
 
-        field old = elements[sponge.capacity + sponge.absorb_pos]
-        field new = add(old, element)
-        elements[sponge.capacity + sponge.absorb_pos] = new
+        field input = inputs[i]
+        field old = state[sponge.absorb_pos + 1] // state[0] is for the capacity element, so we need to search absorb_pos + 1
+        field new = old + input
+        state[sponge.absorb_pos + 1] = new
         sponge.absorb_pos = sponge.absorb_pos + 1
     endfor
 
     sponge.squeeze_pos = sponge.rate
 
-    return elements
+    AbsorbResult result = AbsorbResult { state: state, sponge: sponge }
+    return result
 
 
-// We assume that the output of squeeze has only one field
-def squeeze<N>(Sponge sponge, field[N] elements) -> field:
-    // TODO: need to call permutation
-    self.squeeze_pos = 0
-    self.absorb_pos = 0
+def squeeze(Sponge sponge, field[9] state, u32 out_len) -> field[9]:
+    field[out_len] out = [0; out_len]
 
-    field out = elements[sponge.capacity + sponge.squeeze_pos]
-    sponge.squeeze_pos = sponge.squeeze_pos + 1
+    for u32 i in 0..out_len do
+        PermuteResult result = if sponge.squeeze_pos == sponge.rate then permute(state) else PermuteResult {state: state, absorb_pos: sponge.absorb_pos, squeeze_pos: sponge.squeeze_pos } fi
+        state = result.state
+        sponge.absorb_pos = result.absorb_pos
+        sponge.squeeze_pos = result.squeeze_pos
 
-    return out
+        out[sponge.squeeze_pos] = state[sponge.squeeze_pos]
+        sponge.squeeze_pos = sponge.squeeze_pos + 1
+    endfor
+
+    return state
+
+
+def digest(field[9] state) -> field:
+    return state[0]
+
+
