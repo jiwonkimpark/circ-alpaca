@@ -59,7 +59,7 @@ def unpack_to_le_bits(field f) -> bool[256]:
 // `sign`: the schnorr signature to verify.
 // `e`: the value of poseidon(pk, sign.R, msg), which was converted to Fp and then represented as bit array.
 // `params`: the curve parameter needed for arithmetic operations
-def verify(Point pk, field[4] msg, SchnorrSignature sign, CurveParams params) -> bool:
+def verify(Point pk, field[4] msg, SchnorrSignature sign, CurveParams params) -> field:
     Point G = Point {x: 28948022309329048855892746252171976963363056481941647379679742748393362948096, y: 2 }
 
     field e = generate_e(pk, msg, sign)
@@ -69,6 +69,6 @@ def verify(Point pk, field[4] msg, SchnorrSignature sign, CurveParams params) ->
     Point left_hand = get_sG(G, s_le_bits, params) // sG
     Point right_hand = get_ex_plus_r_G(pk, e_le_bits, sign.R, params) // e * xG + rG = (ex + r)G
 
-    bool result = if left_hand.x == right_hand.x && left_hand.y == right_hand.y then true else false fi
+    field result = if left_hand.x == right_hand.x && left_hand.y == right_hand.y then 1 else 0 fi
 
     return result

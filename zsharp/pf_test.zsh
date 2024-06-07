@@ -4,9 +4,12 @@ set -ex
 
 disable -r time
 
+cargo build --release --features r1cs,zok,spartan --example circ
+cargo build --release --features r1cs,zok,spartan --example zk
+
 MODE=release # debug or release
 BIN=../target/$MODE/examples/circ
-ZK_BIN=../target/$MODE/examples/zxi
+ZK_BIN=../target/$MODE/examples/zk
 
 case "$OSTYPE" in
     darwin*)
@@ -34,23 +37,6 @@ function r1cs_test_count {
 }
 
 # Test prove workflow, given an example name
-# examples that don't need modulus change
-function pf_test {
-    zpath=$1
-    $BIN --field-custom-modulus $modulus $zpath r1cs --action spartan-setup
-    $ZK_BIN --field-custom-modulus $modulus --pin $zpath.pin --vin $zpath.vin --action spartan
-    rm -rf P V pi
-}
-
-# Test prove workflow with --zsharp-isolate-asserts, given an example name
-function spartan_test_isolate {
-    ex_name=$1
-    $BIN --field-custom-modulus $modulus --zsharp-isolate-asserts true ./$ex_name.zok r1cs --action spartan-setup
-    $ZK_BIN --field-custom-modulus $modulus --pin ./$ex_name.zok.pin --vin ./$ex_name.zok.vin --action spartan
-    rm -rf P V pi
-}
-
-# Test prove workflow, given an example name
 function spartan_test {
     ex_name=$1
     $BIN --field-custom-modulus $modulus ./$ex_name.zok r1cs --action spartan-setup
@@ -60,5 +46,5 @@ function spartan_test {
 
 
 # r1cs_test ./relation_r.zok
-spartan_test relation_r
+spartan_test relation_r_2
 

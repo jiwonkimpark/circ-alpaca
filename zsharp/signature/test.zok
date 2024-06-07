@@ -34,7 +34,7 @@ import "../../third_party/ZoKrates/zokrates_stdlib/stdlib/utils/pack/bool/unpack
 // signature.s: 0x0839667774a319ed574d9c263ef4fb27edefbee1934b1953d35c222525867caa // 3719920270002846849733653064214732606247931240936760284211304969336821021866
 // s in le_bits form: [false, true, false, true, false, true, false, true, false, false, true, true, true, true, true, false, false, true, true, false, false, false, false, true, true, false, true, false, false, true, false, false, true, false, true, false, false, true, false, false, false, true, false, false, false, true, false, false, false, false, true, true, true, false, true, false, true, true, false, false, true, false, true, true, true, true, false, false, true, false, true, false, true, false, false, true, true, false, false, false, true, true, false, true, false, false, true, false, true, true, false, false, true, false, false, true, true, false, false, false, false, true, true, true, false, true, true, true, true, true, false, true, true, true, true, true, false, true, true, true, true, false, true, true, false, true, true, true, true, true, true, false, false, true, false, false, true, true, false, true, true, true, true, true, false, false, true, false, true, true, true, true, false, true, true, true, true, true, false, false, false, true, true, false, false, true, false, false, false, false, true, true, true, false, false, true, true, false, true, true, false, false, true, false, true, true, true, false, true, false, true, false, true, false, true, true, false, true, true, true, true, false, false, true, true, false, false, false, true, true, false, false, false, true, false, true, false, false, true, false, true, true, true, false, true, true, true, false, true, true, true, false, false, true, true, false, false, true, true, false, true, false, false, true, true, true, false, false, false, false, false, true, false, false, false, false, ]
 
-def main() -> bool:
+def main() -> field:
     Point pk = Point {x: 22050626165244989704279360923693429444721272069930454072480348511825682425409, y: 8269332246679691626800088012288573537589763643430667138562379498707187805585 }
     Point G = Point {x: 28948022309329048855892746252171976963363056481941647379679742748393362948096, y: 2 }
 
@@ -56,7 +56,7 @@ def main() -> bool:
 
     assert(e_extracted_le_bits == e_le_bits)
 
-    bool verify_result = verify(pk, sign_messages, sign, VESTA_PARAMS)
+    field verify_result = verify(pk, sign_messages, sign, VESTA_PARAMS)
 
 
     return verify_result
