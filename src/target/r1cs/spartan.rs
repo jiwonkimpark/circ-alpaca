@@ -1,10 +1,11 @@
 //! Export circ R1cs to Spartan
 use crate::target::r1cs::*;
 use bincode::{deserialize_from, serialize_into};
-use curve25519_dalek::scalar::Scalar;
 use fxhash::FxHashMap as HashMap;
 use gmp_mpfr_sys::gmp::limb_t;
 use libspartan::{Assignment, InputsAssignment, Instance, NIZKGens, VarsAssignment, NIZK};
+use libspartan::scalar::Scalar;
+use libspartan::scalar::pasta::fq::Bytes;
 use merlin::Transcript;
 use rug::Integer;
 use std::fs::File;
@@ -34,10 +35,13 @@ pub fn prove<P: AsRef<Path>>(
     assert_ne!(num_cons, 0, "No constraints");
 
     // produce public parameters
+    println!("Producing public parameters");
     let gens = NIZKGens::new(num_cons, num_vars, num_inputs);
     // produce proof
+    println!("Producing proof");
     let mut prover_transcript = Transcript::new(b"nizk_example");
     let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
+    println!("Proof produced");
 
     Ok((gens, inst, pf))
 }
@@ -85,7 +89,7 @@ pub fn r1cs_to_spartan(
     // check modulus
     let f_mod = prover_data.r1cs.field.modulus();
     let s_mod = Integer::from_str_radix(
-        "7237005577332262213973186563042994240857116359379907606001950938285454250989",
+        "28948022309329048855892746252171976963363056481941647379679742748393362948097",
         10,
     )
     .unwrap();
@@ -127,6 +131,9 @@ pub fn r1cs_to_spartan(
 
     let num_vars = wit.len();
     let num_inputs = inp.len();
+    println!("# of variables (witnesses): {}", num_vars);
+    println!("# of inputs: {}", num_inputs);
+    println!("prover_data.r1cs.vars.len(): {}", wit.len() + inp.len());
     assert_eq!(wit.len() + inp.len(), prover_data.r1cs.vars.len());
 
     let assn_witness = VarsAssignment::new(&wit).unwrap();
@@ -159,6 +166,7 @@ pub fn r1cs_to_spartan(
     }
 
     let num_cons = i;
+    println!("# of constraints: {}", num_cons);
 
     let inst = Instance::new(num_cons, num_vars, num_inputs, &m_a, &m_b, &m_c).unwrap();
 
@@ -176,6 +184,7 @@ pub fn r1cs_to_spartan(
     )
 }
 
+// works fine with changing a field representation (Integer) to Fq (Scalar)
 fn int_to_scalar(i: &Integer) -> Scalar {
     let mut accumulator = Scalar::zero();
     let limb_bits = (std::mem::size_of::<limb_t>() as u64) << 3;
@@ -185,7 +194,7 @@ fn int_to_scalar(i: &Integer) -> Scalar {
     let mut m = Scalar::from(two.pow(63));
     m *= Scalar::from(two);
 
-    // as_ref yeilds a least-significant-first array.
+    // as_ref yields a least-significant-first array.
     for digit in i.as_ref().iter().rev() {
         accumulator *= m;
         accumulator += Scalar::from(*digit);

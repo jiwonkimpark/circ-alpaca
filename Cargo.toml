@@ -11,6 +11,7 @@ circ_fields = { path = "circ_fields" }
 circ_opt = { path = "circ_opt" }
 circ_hc = { path = "circ_hc", default-features = false, features = ["rc", "lru"]}
 circ_waksman = { path = "circ_waksman" }
+spartan = { path = "Spartan-pasta", default-features = false, optional = true }
 rug = { version = "1.11", features = ["serde"] }
 gmp-mpfr-sys = { version = "1.4", optional = true }
 lazy_static = { version = "1.4", optional = true }
@@ -45,9 +46,8 @@ pest-ast = { version = "0.3", optional = true }
 from-pest = { version = "0.3", optional = true }
 itertools = "0.10"
 petgraph = { version = "0.6", optional = true }
-spartan = { version = "0.7.0", default-features = false, optional = true }
+#spartan = { version = "0.7.0", default-features = false, optional = true }
 merlin = { version = "3.0.0", optional = true }
-curve25519-dalek = {version = "3.2.0", features = ["serde"], optional = true}
 # TODO: kill
 paste = "1.0"
 im = "15"
@@ -72,7 +72,7 @@ lp = ["good_lp", "lp-solvers"]
 aby = ["lp"]
 r1cs = ["bincode", "rayon"]
 poly = ["rug-polynomial"]
-spartan = ["r1cs", "dep:spartan", "merlin", "curve25519-dalek", "bincode", "gmp-mpfr-sys"]
+spartan = ["r1cs", "dep:spartan", "rayon", "merlin", "bincode", "gmp-mpfr-sys"]
 bellman = ["r1cs", "dep:bellman", "ff", "group", "pairing", "serde_bytes", "bincode", "gmp-mpfr-sys", "byteorder", "rayon"]
 
 [[example]]
