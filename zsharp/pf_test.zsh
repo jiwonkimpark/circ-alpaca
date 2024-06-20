@@ -44,7 +44,5 @@ function spartan_test {
     rm -rf P V pi
 }
 
-
-# r1cs_test ./relation_r.zok
-spartan_test relation_r_2
+spartan_test relation_r
 
