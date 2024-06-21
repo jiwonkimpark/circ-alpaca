@@ -44,6 +44,8 @@ enum ProofAction {
     Prove,
     Verify,
     Spartan,
+    SpartanProve,
+    SpartanVerify
 }
 
 #[derive(PartialEq, Debug, Clone, ValueEnum)]
@@ -92,6 +94,29 @@ fn main() {
         #[cfg(feature = "spartan")]
         (ProofAction::Spartan, _) => {
             let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
+            println!("{:?}", prover_input_map);
+            println!("Spartan Proving");
+            let (gens, inst, proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
+
+            let verifier_input_map = parse_value_map(&std::fs::read(opts.vin).unwrap());
+            println!("Spartan Verifying");
+            spartan::verify(opts.verifier_key, &verifier_input_map, &gens, &inst, proof).unwrap();
+        }
+        #[cfg(feature = "spartan")]
+        (ProofAction::SpartanProve, _) => {
+            let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
+            println!("{:?}", prover_input_map);
+            println!("Spartan Proving");
+            let (gens, inst, proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
+
+            let verifier_input_map = parse_value_map(&std::fs::read(opts.vin).unwrap());
+            println!("Spartan Verifying");
+            spartan::verify(opts.verifier_key, &verifier_input_map, &gens, &inst, proof).unwrap();
+        }
+        #[cfg(feature = "spartan")]
+        (ProofAction::SpartanVerify, _) => {
+            let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
+            println!("{:?}", prover_input_map);
             println!("Spartan Proving");
             let (gens, inst, proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
 

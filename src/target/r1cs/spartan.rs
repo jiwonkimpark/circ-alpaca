@@ -10,7 +10,7 @@ use merlin::Transcript;
 use rug::Integer;
 use std::fs::File;
 use std::io;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
 
 /// Hold Spartan variables
@@ -42,6 +42,15 @@ pub fn prove<P: AsRef<Path>>(
     let mut prover_transcript = Transcript::new(b"nizk_example");
     let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
     println!("Proof produced");
+
+    let mut file = File::create("./circ-zsharp/zsharp/proof.txt").unwrap();
+    writeln!(file, "{:?}", pf)?;
+
+    file = File::create("./circ-zsharp/zsharp/inst.txt").unwrap();
+    writeln!(file, "{:?}", inst)?;
+
+    file = File::create("./circ-zsharp/zsharp/gens.txt").unwrap();
+    writeln!(file, "{:?}", gens)?;
 
     Ok((gens, inst, pf))
 }
