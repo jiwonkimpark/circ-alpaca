@@ -43,14 +43,14 @@ pub fn prove<P: AsRef<Path>>(
     let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
     println!("Proof produced");
 
-    let mut file = File::create("./circ-zsharp/zsharp/proof.txt").unwrap();
-    writeln!(file, "{:?}", pf)?;
+    let mut file = File::create("../../../third_party/proof.txt").unwrap();
+    file.write_all(serde_json::to_string(&pf)?.as_bytes())?;
 
-    file = File::create("./circ-zsharp/zsharp/inst.txt").unwrap();
-    writeln!(file, "{:?}", inst)?;
+    file = File::create("../../../third_party/inst.txt").unwrap();
+    file.write_all(serde_json::to_string(&inst)?.as_bytes())?;
 
-    file = File::create("./circ-zsharp/zsharp/gens.txt").unwrap();
-    writeln!(file, "{:?}", gens)?;
+    file = File::create("../../../third_party/gens.txt").unwrap();
+    file.write_all(serde_json::to_string(&gens)?.as_bytes())?;
 
     Ok((gens, inst, pf))
 }

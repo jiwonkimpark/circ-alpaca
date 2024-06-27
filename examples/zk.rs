@@ -1,11 +1,13 @@
+use std::io::BufReader;
 use circ::cfg::{
     clap::{self, Parser, ValueEnum},
     CircOpt,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[cfg(feature = "bellman")]
 use bls12_381::Bls12;
+use libspartan::{Instance, NIZK, NIZKGens};
 #[cfg(feature = "bellman")]
 use circ::target::r1cs::{bellman::Bellman, mirage::Mirage, proof::ProofSystem};
 
@@ -107,18 +109,13 @@ fn main() {
             let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
             println!("{:?}", prover_input_map);
             println!("Spartan Proving");
-            let (gens, inst, proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
-
-            let verifier_input_map = parse_value_map(&std::fs::read(opts.vin).unwrap());
-            println!("Spartan Verifying");
-            spartan::verify(opts.verifier_key, &verifier_input_map, &gens, &inst, proof).unwrap();
+            let (_gens, _inst, _proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
         }
         #[cfg(feature = "spartan")]
         (ProofAction::SpartanVerify, _) => {
-            let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
-            println!("{:?}", prover_input_map);
-            println!("Spartan Proving");
-            let (gens, inst, proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
+            let proof = read_proof();
+            let inst = read_instance();
+            let gens = read_gens();
 
             let verifier_input_map = parse_value_map(&std::fs::read(opts.vin).unwrap());
             println!("Spartan Verifying");
@@ -127,4 +124,33 @@ fn main() {
         #[cfg(not(feature = "spartan"))]
         (ProofAction::Spartan, _) => panic!("Missing feature: spartan"),
     }
+}
+
+fn read_proof() -> NIZK {
+    let path = Path::new("./circ-zsharp/zsharp/proof.txt");
+    let file = std::fs::File::open(path).expect("Failed to read proof file");
+    let reader = BufReader::new(file);
+
+    let proof: NIZK = serde_json::from_reader(reader).expect("failed to parse to json");
+
+    println!("{:?}", proof);
+    proof
+}
+
+fn read_instance() -> Instance {
+    let path = Path::new("./circ-zsharp/zsharp/inst.txt");
+    let file = std::fs::File::open(path).expect("Failed to read instance file");
+    let reader = BufReader::new(file);
+
+    let inst: Instance = serde_json::from_reader(reader).expect("failed to parse to json");
+    inst
+}
+
+fn read_gens() -> NIZKGens {
+    let path = Path::new("./circ-zsharp/zsharp/gens.txt");
+    let file = std::fs::File::open(path).expect("Failed to read gens file");
+    let reader = BufReader::new(file);
+
+    let gens: NIZKGens = serde_json::from_reader(reader).expect("failed to parse to json");
+    gens
 }
