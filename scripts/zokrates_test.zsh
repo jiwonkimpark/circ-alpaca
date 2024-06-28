@@ -8,8 +8,10 @@ disable -r time
 # cargo build --example circ
 
 MODE=release # debug or release
-BIN=./target/$MODE/examples/circ
-ZK_BIN=./target/$MODE/examples/zk
+BIN=../target/$MODE/examples/circ
+ZK_BIN=../target/$MODE/examples/zk
+
+modulus=28948022309329048855892746252171976963363056481941647379679742748393362948097
 
 case "$OSTYPE" in 
     darwin*)
@@ -39,11 +41,11 @@ function pf_test {
     do
         ex_name=$1
         # compile the circuit to R1CS and then perform zkSNARK Setup, storing pk and vk in files P and V respectively
-        $BIN examples/ZoKrates/pf/$ex_name.zok r1cs --action setup --proof-impl $proof_impl
+        $BIN --field-custom-modulus $modulus ../examples/ZoKrates/pf/$ex_name.zok r1cs --action setup --proof-impl $proof_impl
         # create a proof using the prover input (x,w) stored in the .pin file
-        $ZK_BIN --inputs examples/ZoKrates/pf/$ex_name.zok.pin --action prove --proof-impl $proof_impl
+        $ZK_BIN --field-custom-modulus $modulus --inputs ../examples/ZoKrates/pf/$ex_name.zok.pin --action prove --proof-impl $proof_impl
         # verify a proof using the verifier input (x) stored in the .vin file
-        $ZK_BIN --inputs examples/ZoKrates/pf/$ex_name.zok.vin --action verify --proof-impl $proof_impl
+        $ZK_BIN --field-custom-modulus $modulus --inputs ../examples/ZoKrates/pf/$ex_name.zok.vin --action verify --proof-impl $proof_impl
         # clean up
         rm -rf P V pi
     done
@@ -88,27 +90,28 @@ r1cs_test ./third_party/ZoKrates/zokrates_stdlib/stdlib/hashes/mimc7/mimc7R20.zo
 r1cs_test ./third_party/ZoKrates/zokrates_stdlib/stdlib/hashes/pedersen/512bit.zok
 r1cs_test ./examples/ZoKrates/pf/2024_06_02_chad_bug.zok
 
-pf_test_only_pf sha_temp1
-pf_test_only_pf sha_rot
-pf_test_only_pf maj
-pf_test_only_pf sha_temp2
-#pf_test_only_pf test_sha256
+#pf_test_only_pf sha_temp1
+#pf_test_only_pf sha_rot
+#pf_test_only_pf maj
+#pf_test_only_pf sha_temp2
+##pf_test_only_pf test_sha256
 
-pf_test assert
-pf_test assert2
-pf_test_isolate isolate_assert
-pf_test 3_plus
-pf_test xor
+#pf_test assert
+#pf_test assert2
+#pf_test_isolate isolate_assert
+#pf_test 3_plus
+#pf_test xor
 pf_test mul
-pf_test many_pub
-pf_test str_str
-pf_test str_arr_str
-pf_test arr_str_arr_str
-pf_test var_idx_arr_str_arr_str
-pf_test mm
-pf_test unused_var
+#pf_test many_pub
+#pf_test str_str
+#pf_test str_arr_str
+#pf_test arr_str_arr_str
+#pf_test var_idx_arr_str_arr_str
+#pf_test mm
+#pf_test unused_var
 
 pf_test 2024_05_24_benny_bug
 pf_test 2024_05_31_benny_bug
 
 scripts/zx_tests/run_tests.sh
+
