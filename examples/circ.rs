@@ -317,6 +317,9 @@ fn main() {
             println!("Running r1cs optimizations ");
             r1cs = reduce_linearities(r1cs, cfg());
 
+            let mut file = File::create("../zsharp/r1cs.txt").unwrap();
+            file.write_all(serde_json::to_string(&r1cs).expect("failed to serialize to json").as_bytes()).expect("Failed to write r1cs to the file");
+
             println!("Final R1cs size: {}", r1cs.constraints().len());
             if cfg().r1cs.profile {
                 println!("R1CS stats: {:#?}", r1cs.stats());
