@@ -139,7 +139,7 @@ pub struct FieldOpt {
         long = "field-builtin",
         env = "FIELD_BUILTIN",
         value_enum,
-        default_value = "pallas"
+        default_value = "bls12381"
     )]
     pub builtin: BuiltinField,
 
@@ -159,10 +159,6 @@ pub enum BuiltinField {
     Bls12381,
     /// BN-254 scalar field
     Bn254,
-    /// Pallas
-    Pallas,
-    /// Vesta
-    Vesta
 }
 
 impl Default for BuiltinField {
