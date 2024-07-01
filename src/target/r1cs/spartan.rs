@@ -56,13 +56,13 @@ pub fn prove<P: AsRef<Path>>(
     let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
     println!("Proof produced");
 
-    let mut file = File::create("./circ-mastadon/zsharp/proof.txt").unwrap();
+    let mut file = File::create("./circ-mastadon/zsharp/proof.json").unwrap();
     file.write_all(serde_json::to_string(&pf).expect("pf to json string failed").as_bytes()).expect("write into file failed");
 
-    file = File::create("./circ-mastadon/zsharp/inst.txt").unwrap();
+    file = File::create("./circ-mastadon/zsharp/inst.json").unwrap();
     file.write_all(serde_json::to_string(&inst)?.as_bytes())?;
 
-    file = File::create("./circ-mastadon/zsharp/gens.txt").unwrap();
+    file = File::create("./circ-mastadon/zsharp/gens.json").unwrap();
     file.write_all(serde_json::to_string(&gens).expect("pf to json string failed").as_bytes()).expect("write into file failed");
 
 
