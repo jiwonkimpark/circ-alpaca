@@ -3,8 +3,8 @@
 //! A compiler infrastructure for compiling programs to circuits
 
 #![warn(missing_docs)]
-#![deny(warnings)]
 #![allow(rustdoc::private_intra_doc_links)]
+// #![deny(warnings)]
 
 #[macro_use]
 pub mod ir;

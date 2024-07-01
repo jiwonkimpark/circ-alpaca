@@ -1,11 +1,7 @@
-import os
-import shutil
 import sys
-import tempfile
 
 F_p = 28948022309329048855892746252171976963363056481941560715954676764349967630337
 F_q = 28948022309329048855892746252171976963363056481941647379679742748393362948097
-
 
 def hex_string_from(byte_array_str):
     array = byte_array_str.replace(' ', '').split('[')[1].split(']')[0].split(',')
@@ -34,41 +30,33 @@ def field_from(hex_str):
     return field_res
 
 
-def pin_arg_from(hex_str):
+def zok_input_arguments_from(hex_str):
     field = field_from(hex_str)
     arg = "#f" + str(field)
     return arg
 
 
-def pin_list_from(args):
-    pin_list = []
+def zok_input_fields(args):
+    input_list = []
     for arg in args:
         arg_hex = hex_string_from(arg)
-        pin_list.append(pin_arg_from(arg_hex))
-    return pin_list
+        input_list.append(zok_input_arguments_from(arg_hex))
+    return input_list
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    pin_list = pin_list_from(args)
+    in_path = args[0]
+    input_fields = zok_input_fields(args[1:])
 
-    pin_path = "./circ-zsharp/zsharp/relation_r_tmp.zok.pin"
-
-    # with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-    #     temp_file_path = temp_file.name
-    #     shutil.copyfile(src=pin_path, dst=temp_file_path)
-
-    with open(pin_path, 'r') as file:
+    with open(in_path, 'r') as file:
         content = file.read()
 
     updated = content
-    for i in range(0, len(pin_list)):
-        updated = updated.replace('$' + str(i), str(pin_list[i]))
+    for i in range(0, len(input_fields)):
+        updated = updated.replace('$' + str(i), str(input_fields[i]))
 
-    with open(pin_path, 'w') as file:
+    with open(in_path, 'w') as file:
         file.write(updated)
 
-    # shutil.copyfile(src=temp_file_path, dst=pin_path)
-    # os.remove(temp_file_path)
-
-    print("pin file created")
+    print(in_path + " file has successfully been created")

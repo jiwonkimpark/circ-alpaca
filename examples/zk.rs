@@ -127,7 +127,7 @@ fn main() {
 }
 
 fn read_proof() -> NIZK {
-    let path = Path::new("./circ-zsharp/zsharp/proof.txt");
+    let path = Path::new("./circ-mastadon/zsharp/proof.txt");
     let file = std::fs::File::open(path).expect("Failed to read proof file");
     let reader = BufReader::new(file);
 
@@ -138,7 +138,7 @@ fn read_proof() -> NIZK {
 }
 
 fn read_instance() -> Instance {
-    let path = Path::new("./circ-zsharp/zsharp/inst.txt");
+    let path = Path::new("./circ-mastadon/zsharp/inst.txt");
     let file = std::fs::File::open(path).expect("Failed to read instance file");
     let reader = BufReader::new(file);
 
@@ -147,7 +147,7 @@ fn read_instance() -> Instance {
 }
 
 fn read_gens() -> NIZKGens {
-    let path = Path::new("./circ-zsharp/zsharp/gens.txt");
+    let path = Path::new("./circ-mastadon/zsharp/gens.txt");
     let file = std::fs::File::open(path).expect("Failed to read gens file");
     let reader = BufReader::new(file);
 
