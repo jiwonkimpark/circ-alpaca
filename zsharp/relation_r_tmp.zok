@@ -50,17 +50,17 @@ def generate_commitment(field com,  field r,  field k) -> field:
     return com_output
 
 
-def main() -> field:
-  //field tag_output = generate_tag(tag, nonce, message_hash, k)
-  //field verify_sign_start = verify_sign_start(pk_id_x, pk_id_y, sign_start_R_x, sign_start_R_y, sign_start_s, com_k, t_start_nonce, t_start_tag, t_start_h)
-  field com_k_prime_output = generate_commitment(21358926795386846732454629954052755386171312239086120529013883165993159260237, 11395251975303401368954824590286117318238599029631412041625367401217191398057, 4964041847596584581519526096666130991819502424687212845519038048547581727758)
-  //field com_k_output = generate_commitment(com_k, r_com, k)
+def main(field tag, field nonce, field message_hash, field pk_id_x, field pk_id_y, field com_k_prime, private field k, private field r_prime, private field sign_start_R_x, private field sign_start_R_y, private field sign_start_s, private field com_k, private field t_start_nonce, private field t_start_tag, private field t_start_h, private field r_com) -> field:
+    field tag_output = generate_tag(tag, nonce, message_hash, k)
+    field verify_sign_start = verify_sign_start(pk_id_x, pk_id_y, sign_start_R_x, sign_start_R_y, sign_start_s, com_k, t_start_nonce, t_start_tag, t_start_h)
+    field com_k_prime_output = generate_commitment(com_k_prime, r_prime, k)
+    field com_k_output = generate_commitment(com_k, r_com, k)
 
-  //field check_tag = tag_output - tag
-  //field check_sign_start = verify_sign_start - 1
-  //field check_com_k_prime = com_k_prime_output - com_k_prime
-  //field check_com_k = com_k_output - com_k
+    field check_tag = tag_output - tag
+    field check_sign_start = verify_sign_start - 1
+    field check_com_k_prime = com_k_prime_output - com_k_prime
+    field check_com_k = com_k_output - com_k
 
-  //field result = check_tag + check_sign_start + check_com_k_prime
+    field result = check_tag + check_sign_start + check_com_k_prime
 
-  return com_k_prime_output
+    return result

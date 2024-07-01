@@ -20,6 +20,19 @@ pub struct Variable {
     value: [u8; 32],
 }
 
+pub fn r1cs_with_prover_input<P: AsRef<Path>>(
+    p_path: P,
+    _inputs_map: &HashMap<String, Value>,
+) {
+    let prover_data: ProverData = read_prover_data::<_>(p_path).expect("failed to read prover data");
+    let mut file = File::create("./circ-mastadon/zsharp/r1cs.json").unwrap();
+    file.write_all(
+        serde_json::to_string(&prover_data.r1cs)
+            .expect("failed to serialize r1cs to json")
+            .as_bytes()
+    ).expect("Failed to write r1cs to the file");
+}
+
 /// generate spartan proof
 pub fn prove<P: AsRef<Path>>(
     p_path: P,
@@ -43,14 +56,15 @@ pub fn prove<P: AsRef<Path>>(
     let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
     println!("Proof produced");
 
-    let mut file = File::create("../../../third_party/proof.txt").unwrap();
-    file.write_all(serde_json::to_string(&pf)?.as_bytes())?;
+    let mut file = File::create("./circ-mastadon/zsharp/proof.txt").unwrap();
+    file.write_all(serde_json::to_string(&pf).expect("pf to json string failed").as_bytes()).expect("write into file failed");
 
-    file = File::create("../../../third_party/inst.txt").unwrap();
+    file = File::create("./circ-mastadon/zsharp/inst.txt").unwrap();
     file.write_all(serde_json::to_string(&inst)?.as_bytes())?;
 
-    file = File::create("../../../third_party/gens.txt").unwrap();
-    file.write_all(serde_json::to_string(&gens)?.as_bytes())?;
+    file = File::create("./circ-mastadon/zsharp/gens.txt").unwrap();
+    file.write_all(serde_json::to_string(&gens).expect("pf to json string failed").as_bytes()).expect("write into file failed");
+
 
     Ok((gens, inst, pf))
 }

@@ -47,7 +47,8 @@ enum ProofAction {
     Verify,
     Spartan,
     SpartanProve,
-    SpartanVerify
+    SpartanVerify,
+    SpartanR1CS,
 }
 
 #[derive(PartialEq, Debug, Clone, ValueEnum)]
@@ -103,6 +104,13 @@ fn main() {
             let verifier_input_map = parse_value_map(&std::fs::read(opts.vin).unwrap());
             println!("Spartan Verifying");
             spartan::verify(opts.verifier_key, &verifier_input_map, &gens, &inst, proof).unwrap();
+        }
+        #[cfg(feature = "spartan")]
+        (ProofAction::SpartanR1CS, _) => {
+            let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
+            println!("{:?}", prover_input_map);
+            println!("Getting R1CS");
+            spartan::r1cs_with_prover_input(opts.prover_key, &prover_input_map);
         }
         #[cfg(feature = "spartan")]
         (ProofAction::SpartanProve, _) => {
