@@ -1,0 +1,56 @@
+import "hash/poseidon"
+from "curves/point" import Point
+from "curves/params" import CurveParams, VESTA_PARAMS
+from "signature/schnorr" import SchnorrSignature, verify
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+// PRF_k(nonce, message_hash) = tag
+def generate_tag(field tag, field nonce, field message_hash, field k) -> field:
+    field[3] prf_inputs = [0; 3]
+    prf_inputs[0] = k
+    prf_inputs[1] = nonce
+    prf_inputs[2] = message_hash
+
+    field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
+
+    return prf_output
+
+
+// Sig.Verify(pk_id, sign_start, (com_k, t_start))
+def verify_sign_start(field pk_id_x, field pk_id_y, field sign_start_R_x, field sign_start_R_y, field sign_start_s, field com_k, field t_start_nonce, field t_start_tag, field t_start_h) -> field:
+    Point pk = Point { x: pk_id_x, y: pk_id_y }
+    Point sign_R = Point { x: sign_start_R_x, y: sign_start_R_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_start_s }
+
+    field[4] sign_messages = [0; 4]
+    sign_messages[0] = com_k
+    sign_messages[1] = t_start_nonce
+    sign_messages[2] = t_start_tag
+    sign_messages[3] = t_start_h
+
+    field result = verify(pk, sign_messages, sign, VESTA_PARAMS)
+
+    return 1
+
+
+// open(com, r) = k
+def generate_commitment(field com,  field r,  field k) -> field:
+    field[2] com_inputs = [0; 2]
+    com_inputs[0] = k
+    com_inputs[1] = r
+
+    field com_output = poseidon(com_inputs, DOMAIN_SEPARATOR_COMMITMENT)
+
+    return com_output
+
+
+def main(field com_k, private field k, private field r_com) -> field:
+  field com_k_output = generate_commitment(com_k, r_com, k)
+
+  field result = com_k_output
+
+  return result
