@@ -146,7 +146,7 @@ pub struct R1csFinal {
     field: FieldT,
     pub vars: Vec<Var>,
     pub constraints: Vec<(Lc, Lc, Lc)>,
-    names: HashMap<Var, String>,
+    pub names: HashMap<Var, String>,
 
     commitments: Vec<Vec<Var>>,
 }
@@ -170,7 +170,7 @@ impl Var {
         };
         Var(ty_repr << Self::NUMBER_BITS | number)
     }
-    fn ty(&self) -> VarType {
+    pub fn ty(&self) -> VarType {
         match self.0 >> Self::NUMBER_BITS {
             0b000 => VarType::Inst,
             0b001 => VarType::CWit,
@@ -696,9 +696,9 @@ pub enum SigTy {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A linear combination
 pub struct Lc {
-    modulus: FieldT,
-    constant: FieldV,
-    monomials: HashMap<Var, FieldV>,
+    pub modulus: FieldT,
+    pub constant: FieldV,
+    pub monomials: HashMap<Var, FieldV>,
 }
 
 impl Lc {
