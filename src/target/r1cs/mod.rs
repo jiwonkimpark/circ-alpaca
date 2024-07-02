@@ -144,8 +144,8 @@ pub struct R1cs {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct R1csFinal {
     field: FieldT,
-    vars: Vec<Var>,
-    constraints: Vec<(Lc, Lc, Lc)>,
+    pub vars: Vec<Var>,
+    pub constraints: Vec<(Lc, Lc, Lc)>,
     names: HashMap<Var, String>,
 
     commitments: Vec<Vec<Var>>,
