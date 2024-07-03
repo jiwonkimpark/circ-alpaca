@@ -8,8 +8,6 @@ const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
 const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
 
-// What's private field?
-
 // PRF_k(nonce, message_hash) = tag
 def generate_tag(field tag, field nonce, field message_hash, field k) -> field:
     field[3] prf_inputs = [0; 3]

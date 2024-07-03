@@ -17,4 +17,4 @@ function spartan_r1cs {
 #      rm -rf P V pi
 }
 
-spartan_r1cs relation_r_tmp
+spartan_r1cs function_f

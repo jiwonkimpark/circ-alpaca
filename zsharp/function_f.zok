@@ -48,9 +48,9 @@ def generate_commitment(field com,  field r,  field k) -> field:
     return com_output
 
 
-def main(field com_k, private field k, private field r_com) -> field:
+def main(private field com_k, private field k, private field r_com) -> field:
   field com_k_output = generate_commitment(com_k, r_com, k)
 
-  field result = com_k_output
+  field result = com_k_output - com_k
 
   return result
