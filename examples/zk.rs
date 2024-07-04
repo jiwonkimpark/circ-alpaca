@@ -111,6 +111,7 @@ fn main() {
             println!("{:?}", prover_input_map);
             println!("Getting R1CS");
             spartan::r1cs_with_prover_input(opts.prover_key, &prover_input_map);
+            println!("Successfully retrieved R1CS")
         }
         #[cfg(feature = "spartan")]
         (ProofAction::SpartanProve, _) => {

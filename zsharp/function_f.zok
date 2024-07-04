@@ -47,10 +47,15 @@ def generate_commitment(field com,  field r,  field k) -> field:
 
     return com_output
 
+// private field t_i_nonce, private field t_i_message_hash, private field, t_i_tag, private field t_i_h,
+def main(private field com_k_j, private field h_i, private field com_k, private field k, private field r_com, private field r_j) -> field:
 
-def main(private field com_k, private field k, private field r_com) -> field:
   field com_k_output = generate_commitment(com_k, r_com, k)
+  field com_k_j_output = generate_commitment(com_k_j, r_j, k)
 
-  field result = com_k_output - com_k
+  field com_k_result = com_k_output - com_k // should be 0
+  field com_k_j_result = com_k_j_output - com_k_j // should be 0
+
+  field result = com_k_result + com_k_j_result
 
   return result
