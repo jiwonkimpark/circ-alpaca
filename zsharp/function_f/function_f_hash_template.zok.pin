@@ -1,10 +1,10 @@
 (set_default_modulus 28948022309329048855892746252171976963363056481941647379679742748393362948097
 (let (
-    (h_i $0)
-    (t_i_minus_1_nonce $1)
-    (t_i_minus_1_message_hash $2)
-    (t_i_minus_1_tag $3)
-    (t_i_minus_1_h $4)
+    (h_i $00)
+    (t_i_minus_1_nonce $01)
+    (t_i_minus_1_message_hash $02)
+    (t_i_minus_1_tag $03)
+    (t_i_minus_1_h $04)
 ) true ;ignored
 )
 )

@@ -54,7 +54,10 @@ if __name__ == "__main__":
 
     updated = content
     for i in range(0, len(input_fields)):
-        updated = updated.replace('$' + str(i), str(input_fields[i]))
+        if i < 10:
+            updated = updated.replace('$0' + str(i), input_fields[i])
+        else:
+            updated = updated.replace('$' + str(i), input_fields[i])
 
     with open(in_path, 'w') as file:
         file.write(updated)
