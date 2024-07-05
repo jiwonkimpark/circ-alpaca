@@ -1,0 +1,51 @@
+import "../hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+from "../signature/schnorr" import SchnorrSignature, verify
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+
+def generate_prf(field k,  field nonce,  field message_hash) -> field:
+    field[3] prf_inputs = [0; 3]
+    prf_inputs[0] = k
+    prf_inputs[1] = nonce
+    prf_inputs[2] = message_hash
+
+    field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
+
+    return prf_output
+
+
+// Sig.Verify(pk_sp, sign_ban_over, t_i)
+def verify_sign_ban_over(field pk_sp_x, field pk_sp_y, field sign_R_x, field sign_R_y, field sign_s, field t_i_nonce, field t_i_message_hash, field t_i_tag, field t_i_h) -> field:
+    Point pk = Point { x: pk_sp_x, y: pk_sp_y }
+    Point sign_R = Point { x: sign_R_x, y: sign_R_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
+
+    field[4] sign_messages = [0; 4]
+    sign_messages[0] = t_i_nonce
+    sign_messages[1] = t_i_message_hash
+    sign_messages[2] = t_i_tag
+    sign_messages[3] = t_i_h
+
+    field result = verify(pk, sign_messages, sign, VESTA_PARAMS)
+
+    return result
+
+
+// check Sig.verify(pk_id, sign_start, com_k, t_start) = 1
+def main(private field k, private field t_i_nonce, private field t_i_message_hash, private field t_i_tag, private field t_i_h, private field pk_sp_x, private field pk_sp_y, private field sign_ban_over_r_x, private field sign_ban_over_r_y, private field sign_ban_over_s) -> field:
+  field generated_tag = generate_prf(k, t_i_nonce, t_i_message_hash)
+  field tag_result = generated_tag - t_i_tag // should not be 0
+
+  field verify_sign = verify_sign_ban_over(pk_sp_x, pk_sp_y, sign_ban_over_r_x, sign_ban_over_r_y, sign_ban_over_s, t_i_nonce, t_i_message_hash, t_i_tag, t_i_h)
+  field verify_sign_result = verify_sign - 1 // should be 0
+
+  field result = if tag_result != 0 then 0 else verify_sign_result fi
+  assert(result == 0)
+
+  return result

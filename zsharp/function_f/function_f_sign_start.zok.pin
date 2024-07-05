@@ -1,0 +1,14 @@
+(set_default_modulus 28948022309329048855892746252171976963363056481941647379679742748393362948097
+(let (
+    (com_k $0)
+    (pk_id_x $1)
+    (pk_id_y $2)
+    (sign_start_R_x $3)
+    (sign_start_R_y $4)
+    (sign_start_s $5)
+    (t_start_nonce $6)
+    (t_start_tag $7)
+    (t_start_h $8)
+) true ;ignored
+)
+)

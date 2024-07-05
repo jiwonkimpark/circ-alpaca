@@ -1,0 +1,15 @@
+(set_default_modulus 28948022309329048855892746252171976963363056481941647379679742748393362948097
+(let (
+    (k $0)
+    (t_i_nonce $1)
+    (t_i_message_hash $2)
+    (t_i_tag $3)
+    (t_i_h $4)
+    (pk_sp_x $5)
+    (pk_sp_y $6)
+    (sign_ban_over_r_x $7)
+    (sign_ban_over_r_y $8)
+    (sign_ban_over_s $9)
+) true ;ignored
+)
+)

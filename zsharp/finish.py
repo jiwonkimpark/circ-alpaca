@@ -21,7 +21,7 @@ if __name__ == "__main__":
     elif pin_vin_flag == 1 or pin_vin_flag == '1':
         replace_file_contents(vin_file_template_path, file_path)
     else:
-        raise Exception("Only 0 and 1 are allowed for args[1]")
+        raise Exception("Only 0 and 1 are allowed for args[0]")
 
     print(file_path + " has been rolled back to template file")
 

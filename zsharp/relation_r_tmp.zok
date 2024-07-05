@@ -36,7 +36,7 @@ def verify_sign_start(field pk_id_x, field pk_id_y, field sign_start_R_x, field 
 
     field result = verify(pk, sign_messages, sign, VESTA_PARAMS)
 
-    return 1
+    return result
 
 
 // open(com, r) = k
