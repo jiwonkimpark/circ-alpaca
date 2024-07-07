@@ -1,0 +1,121 @@
+import "../hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+from "../signature/schnorr" import SchnorrSignature, verify
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+// open(com, r) = k
+def generate_commitment(field com,  field r,  field k) -> field:
+    field[2] com_inputs = [0; 2]
+    com_inputs[0] = k
+    com_inputs[1] = r
+
+    field com_output = poseidon(com_inputs, DOMAIN_SEPARATOR_COMMITMENT)
+
+    return com_output
+
+
+def generate_hash(field nonce,  field message_hash,  field tag,  field h) -> field:
+    field[4] hash_inputs = [0; 4]
+    hash_inputs[0] = nonce
+    hash_inputs[1] = message_hash
+    hash_inputs[2] = tag
+    hash_inputs[3] = h
+
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+def generate_prf(field k,  field nonce,  field message_hash) -> field:
+    field[3] prf_inputs = [0; 3]
+    prf_inputs[0] = k
+    prf_inputs[1] = nonce
+    prf_inputs[2] = message_hash
+
+    field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
+
+    return prf_output
+
+
+// Sig.Verify(pk_id, sign_start, (com_k, t_start))
+def verify_sign_start(field pk_id_x, field pk_id_y, field sign_start_R_x, field sign_start_R_y, field sign_start_s, field com_k, field t_start_nonce, field t_start_tag, field t_start_h) -> field:
+    Point pk = Point { x: pk_id_x, y: pk_id_y }
+    Point sign_R = Point { x: sign_start_R_x, y: sign_start_R_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_start_s }
+
+    field[4] sign_messages = [0; 4]
+    sign_messages[0] = com_k
+    sign_messages[1] = t_start_nonce
+    sign_messages[2] = t_start_tag
+    sign_messages[3] = t_start_h
+
+    field result = verify(pk, sign_messages, sign, VESTA_PARAMS)
+
+    return result
+
+
+// Sig.Verify(pk_sp, sign_ban_over, t_i)
+def verify_sign_ban_over(field pk_sp_x, field pk_sp_y, field sign_R_x, field sign_R_y, field sign_s, field t_i_nonce, field t_i_message_hash, field t_i_tag, field t_i_h) -> field:
+    Point pk = Point { x: pk_sp_x, y: pk_sp_y }
+    Point sign_R = Point { x: sign_R_x, y: sign_R_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
+
+    field[4] sign_messages = [0; 4]
+    sign_messages[0] = t_i_nonce
+    sign_messages[1] = t_i_message_hash
+    sign_messages[2] = t_i_tag
+    sign_messages[3] = t_i_h
+
+    field result = verify(pk, sign_messages, sign, VESTA_PARAMS)
+
+    return result
+
+
+def main() -> field:
+   field com_k = 4509070480224490755997804577368042840912019863137525511807292592950594871017
+   field k = 12840526479028109637075050042660655095961832037757778524302038179708482863625
+   field r_com = 3262844593454010939203533821728958292967821514904905916731717219897919766042
+   field pk_id_x = 3998449227377213010079565748761063411994542710664677538041452582645632733124
+   field pk_id_y = 24574977341351650607519854849996186570401944791635127244126624917513185475966
+   field sign_start_R_x = 4213383506495966346271720416613060732092322863192828288816479480912289412386
+   field sign_start_R_y = 19468263548603415021728321412990131164055187467578499193354842524388427701120
+   field sign_start_s = 21894319652582796818710619335877776813207511330639823443145504800365744915196
+   field t_start_nonce = 9096787170847858377007988498270345404491308352203837132205145578366722424350
+   field t_start_tag = 23367422373128258216352079473811997121015012731561887333642564763838172808637
+   field t_start_h = 23072060682453187100165600324481658235986998282741537254714691815585653531894
+   field h_i = 23072060682453187100165600324481658235986998282741537254714691815585653531894
+   field t_i_minus_1_nonce = 0
+   field t_i_minus_1_message_hash = 0
+   field t_i_minus_1_tag = 13013565031525490894216974819458734205139877622289681418544210304549131055503
+   field t_i_minus_1_h = 5832718907846145985696349048365707930708318227345598990668672118136356033256
+   field com_k_j = 4509070480224490755997804577368042840912019863137525511807292592950594871017
+   field r_j = 3724288260320787742338393282815175105190531386300549908440721882413823967071
+   field t_i_nonce = 9096787170847858377007988498270345404491308352203837132205145578366722424350
+   field t_i_message_hash = 24921635569603149561912317186471618134809479362044499996893231825541568855502
+   field t_i_tag = 23367422373128258216352079473811997121015012731561887333642564763838172808637
+   field t_i_h = 23072060682453187100165600324481658235986998282741537254714691815585653531894
+   field pk_sp_x = 23444740804826927137447393696484894916037939740086339139256115557874499818179
+   field pk_sp_y = 27040149386404294186484752001639929275491553579389201609231246405537208876004
+   field sign_ban_over_r_x = 0
+   field sign_ban_over_r_y = 0
+   field sign_ban_over_s = 0
+
+  //         xL[i] = if i < R - 1 then (if i == 0 then xR_in + t4[i] * t else xR[j] + t4[i] * t fi) else xL[j] fi
+
+  field com_k_output = generate_commitment(com_k, r_com, k)
+  field verify_sign_start_result = verify_sign_start(pk_id_x, pk_id_y, sign_start_R_x, sign_start_R_y, sign_start_s, com_k, t_start_nonce, t_start_tag, t_start_h)
+
+  field com_k_result = com_k_output - com_k // should be 0
+  field verify_sign_result = verify_sign_start_result - 1 // should be 0
+  field check_cred_result = com_k_result + verify_sign_result
+
+  field check_non_cold_start_result = if t_start_h == t_i_h then 0 else (if t_i_tag != generate_prf(k, t_i_nonce, t_i_message_hash) then generate_commitment(com_k_j, r_j, k) - com_k_j + generate_hash(t_i_minus_1_nonce, t_i_minus_1_message_hash, t_i_minus_1_tag, t_i_minus_1_h) - h_i else generate_commitment(com_k_j, r_j, k) - com_k_j + generate_hash(t_i_minus_1_nonce, t_i_minus_1_message_hash, t_i_minus_1_tag, t_i_minus_1_h) - h_i + verify_sign_ban_over(pk_sp_x, pk_sp_y, sign_ban_over_r_x, sign_ban_over_r_y, sign_ban_over_s, t_i_nonce, t_i_message_hash, t_i_tag, t_i_h) - 1 fi) fi
+
+  field result = check_cred_result + check_non_cold_start_result
+  assert(result == 0)
+  return result

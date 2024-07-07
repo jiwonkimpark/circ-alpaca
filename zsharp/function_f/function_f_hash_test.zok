@@ -1,0 +1,36 @@
+import "../hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+
+def generate_hash(field nonce,  field message_hash,  field tag,  field h) -> field:
+    field[4] hash_inputs = [0; 4]
+    hash_inputs[0] = nonce
+    hash_inputs[1] = message_hash
+    hash_inputs[2] = tag
+    hash_inputs[3] = h
+
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+// check h_i = Hash(t_{i-1})
+def main() -> field:
+  field h_i = 23072060682453187100165600324481658235986998282741537254714691815585653531894
+  field t_i_minus_1_nonce = 0
+  field t_i_minus_1_message_hash = 0
+  field t_i_minus_1_tag = 13013565031525490894216974819458734205139877622289681418544210304549131055503
+  field t_i_minus_1_h = 5832718907846145985696349048365707930708318227345598990668672118136356033256
+
+  field hash_output = generate_hash(t_i_minus_1_nonce, t_i_minus_1_message_hash, t_i_minus_1_tag, t_i_minus_1_h)
+
+  field result = hash_output - h_i // should be 0
+
+  assert(result == 0)
+  return result

@@ -1,0 +1,48 @@
+import "../hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+from "../signature/schnorr" import SchnorrSignature, verify
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+
+// Sig.Verify(pk_id, sign_start, (com_k, t_start))
+def verify_sign_start(field pk_id_x, field pk_id_y, field sign_start_R_x, field sign_start_R_y, field sign_start_s, field com_k, field t_start_nonce, field t_start_tag, field t_start_h) -> field:
+    Point pk = Point { x: pk_id_x, y: pk_id_y }
+    Point sign_R = Point { x: sign_start_R_x, y: sign_start_R_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_start_s }
+
+    field[4] sign_messages = [0; 4]
+    sign_messages[0] = com_k
+    sign_messages[1] = t_start_nonce
+    sign_messages[2] = t_start_tag
+    sign_messages[3] = t_start_h
+
+    field result = verify(pk, sign_messages, sign, VESTA_PARAMS)
+
+    return result
+
+
+
+
+// check Sig.verify(pk_id, sign_start, (com_k, t_start)) = 1
+def main() -> field:
+  field com_k = 26763983953329392942050252360168691550893533203117666770074386389447849270151
+  field pk_id_x = 8844401045701847963952759233575418039232984700612999661671903796195459162024
+  field pk_id_y = 6632387320959023308284292504130110677389165712102427381712676576042927592682
+  field sign_start_R_x = 8913658971820700787248137325029256585265389641864498643905033517507459784607
+  field sign_start_R_y = 14884732361943076971584355001319072518987270634868850807998684348794893006750
+  field sign_start_s = 6214279822481893644770460851028230153901780981013422560992334738546861549281
+  field t_start_nonce = 17796044152868612956246000466704454053353480084637173147353128246687947595099
+  field t_start_tag = 19353766703521850296280810854491389429323388477949410283352588452475031874095
+  field t_start_h = 23072060682453187100165600324481658235986998282741537254714691815585653531894
+
+  field verify_sign_start = verify_sign_start(pk_id_x, pk_id_y, sign_start_R_x, sign_start_R_y, sign_start_s, com_k, t_start_nonce, t_start_tag, t_start_h)
+
+  field result = verify_sign_start - 1
+  assert(result == 0)
+
+  return verify_sign_start
