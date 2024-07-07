@@ -40,12 +40,10 @@ def verify_sign_ban_over(field pk_sp_x, field pk_sp_y, field sign_R_x, field sig
 // check Sig.verify(pk_id, sign_start, com_k, t_start) = 1
 def main(private field k, private field t_i_nonce, private field t_i_message_hash, private field t_i_tag, private field t_i_h, private field pk_sp_x, private field pk_sp_y, private field sign_ban_over_r_x, private field sign_ban_over_r_y, private field sign_ban_over_s) -> field:
   field generated_tag = generate_prf(k, t_i_nonce, t_i_message_hash)
-  field tag_result = generated_tag - t_i_tag // should not be 0
+  field tag_result = generated_tag - t_i_tag // should not be 0 if user is not banned
 
-  field verify_sign = verify_sign_ban_over(pk_sp_x, pk_sp_y, sign_ban_over_r_x, sign_ban_over_r_y, sign_ban_over_s, t_i_nonce, t_i_message_hash, t_i_tag, t_i_h)
-  field verify_sign_result = verify_sign - 1 // should be 0
-
-  field result = if tag_result != 0 then 0 else verify_sign_result fi
+  // verify signature only when tag_result == 0 (when user has been banned)
+  field result = if tag_result != 0 then 0 else verify_sign_ban_over(pk_sp_x, pk_sp_y, sign_ban_over_r_x, sign_ban_over_r_y, sign_ban_over_s, t_i_nonce, t_i_message_hash, t_i_tag, t_i_h) - 1 fi
   assert(result == 0)
 
   return result
