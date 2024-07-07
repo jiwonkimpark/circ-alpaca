@@ -26,4 +26,5 @@ def main(private field h_i, private field t_i_minus_1_nonce, private field t_i_m
 
   field result = hash_output - h_i // should be 0
 
+  assert(result == 0)
   return result
