@@ -12,7 +12,7 @@ modulus=289480223093290488558927462521719769633630564819416473796797427483933629
 ex_name=$1
 
 function spartan_r1cs {
-      $BIN --field-custom-modulus $modulus ./circ-mastadon/zsharp/function_f/$ex_name.zok r1cs --action spartan-setup
+      # $BIN --field-custom-modulus $modulus ./circ-mastadon/zsharp/function_f/$ex_name.zok r1cs --action spartan-setup
       $ZK_BIN --field-custom-modulus $modulus --pin ./circ-mastadon/zsharp/function_f/$ex_name.zok.pin --action spartan-r1cs
 #      rm -rf P V pi
 }

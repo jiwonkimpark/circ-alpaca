@@ -45,12 +45,12 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     assert_eq!(values.len(), prover_data.r1cs.vars.len());
 
     // write r1cs
-    let mut file = File::create("./circ-mastadon/zsharp/r1cs.json").unwrap();
-    file.write_all(
-        serde_json::to_string(&prover_data.r1cs)
-            .expect("failed to serialize r1cs to json")
-            .as_bytes()
-    ).expect("Failed to write r1cs to the file");
+    // let mut file = File::create("./circ-mastadon/zsharp/r1cs.json").unwrap();
+    // file.write_all(
+    //     serde_json::to_string(&prover_data.r1cs)
+    //         .expect("failed to serialize r1cs to json")
+    //         .as_bytes()
+    // ).expect("Failed to write r1cs to the file");
 
     // write values
     let mut file = File::create("./circ-mastadon/zsharp/r1cs_values.json").unwrap();
