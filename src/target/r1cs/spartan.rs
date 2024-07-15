@@ -12,6 +12,7 @@ use std::fs::File;
 use std::io;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::Path;
+use std::time::Instant;
 
 /// Hold Spartan variables
 #[derive(Debug)]
@@ -24,6 +25,8 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     p_path: P,
     inputs_map: &HashMap<String, Value>,
 ) {
+    let mut now = Instant::now();
+
     let prover_data: ProverData = read_prover_data::<_>(p_path).expect("failed to read prover data");
 
     // check modulus
@@ -44,6 +47,10 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
 
     assert_eq!(values.len(), prover_data.r1cs.vars.len());
 
+    let mut elapsed = now.elapsed();
+    println!("Elapsed for generating values: {:.2?}", elapsed);
+
+    now = Instant::now();
     // write r1cs
     // let mut file = File::create("./circ-mastadon/zsharp/r1cs.json").unwrap();
     // file.write_all(
@@ -59,6 +66,9 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
             .expect("failed to serialize values to json")
             .as_bytes()
     ).expect("Failed to write values to the file");
+
+    elapsed = now.elapsed();
+    println!("Elapsed for generating r1cs_values.json file: {:.2?}", elapsed);
 }
 
 /// generate spartan proof

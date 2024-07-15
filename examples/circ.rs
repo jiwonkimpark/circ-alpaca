@@ -56,6 +56,7 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 #[derive(Debug, Parser)]
 #[command(name = "circ", about = "CirC: the circuit compiler")]
@@ -307,6 +308,9 @@ fn main() {
             proof_impl,
             ..
         } => {
+            let mut now = Instant::now();
+
+            println!("Converting to r1cs");
             let cs = cs.get("main");
             trace!("IR: {}", circ::ir::term::text::serialize_computation(cs));
             let mut r1cs = to_r1cs(cs, cfg());
@@ -322,10 +326,8 @@ fn main() {
                 println!("R1CS stats: {:#?}", r1cs.stats());
             }
             let (prover_data, verifier_data) = r1cs.finalize(cs);
-            println!(
-                "Final R1cs rounds: {}",
-                prover_data.precompute.stage_sizes().count() - 1
-            );
+            let mut elapsed = now.elapsed();
+            println!("Elapsed for generating r1cs: {:.2?}", elapsed);
             match action {
                 ProofAction::Count => (),
                 #[cfg(feature = "bellman")]
@@ -368,8 +370,13 @@ fn main() {
                 ProofAction::CpSetup => panic!("Missing feature: bellman"),
                 #[cfg(feature = "spartan")]
                 ProofAction::SpartanSetup => {
+                    let mut now = Instant::now();
+
                     write_data::<_, _>(prover_key, verifier_key, &prover_data, &verifier_data)
                         .unwrap();
+
+                    let mut elapsed = now.elapsed();
+                    println!("Elapsed for writing data in setup: {:.2?}", elapsed);
                 }
                 #[cfg(not(feature = "spartan"))]
                 ProofAction::SpartanSetup => panic!("Missing feature: spartan"),

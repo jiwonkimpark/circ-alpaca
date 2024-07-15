@@ -80,7 +80,6 @@ use lex::Token;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::str::{from_utf8, FromStr};
 use std::sync::Arc;
-
 use super::*;
 
 /// A token tree, LISP-style.

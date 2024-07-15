@@ -4,6 +4,7 @@ use circ::cfg::{
     CircOpt,
 };
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 #[cfg(feature = "bellman")]
 use bls12_381::Bls12;
@@ -107,16 +108,26 @@ fn main() {
         }
         #[cfg(feature = "spartan")]
         (ProofAction::SpartanR1CS, _) => {
+            let mut now = Instant::now();
+
             let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
-            println!("{:?}", prover_input_map);
+
+            let mut elapsed = now.elapsed();
+            println!("Elapsed for generating prover_input_map: {:.2?}", elapsed);
+
             println!("Getting R1CS");
             spartan::r1cs_with_prover_input(opts.prover_key, &prover_input_map);
             println!("Successfully retrieved R1CS")
         }
         #[cfg(feature = "spartan")]
         (ProofAction::SpartanProve, _) => {
+            let mut now = Instant::now();
+
             let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
-            println!("{:?}", prover_input_map);
+
+            let mut elapsed = now.elapsed();
+            println!("Elapsed for generating prover_input_map: {:.2?}", elapsed);
+
             println!("Spartan Proving");
             let (_gens, _inst, _proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
         }
