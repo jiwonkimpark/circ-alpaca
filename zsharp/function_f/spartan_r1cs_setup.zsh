@@ -12,9 +12,7 @@ modulus=289480223093290488558927462521719769633630564819416473796797427483933629
 
 function spartan_r1cs {
     ex_name=$1
-#    $BIN --field-custom-modulus $modulus ./circ-mastadon/zsharp/function_f/$ex_name.zok r1cs --action spartan-setup
-    $ZK_BIN --field-custom-modulus $modulus --pin ./circ-mastadon/zsharp/function_f/$ex_name.zok.pin --action spartan-r1cs --prover-key IVC_P --verifier-key IVC_V
-#      rm -rf P V pi
+    $BIN --field-custom-modulus $modulus ./circ-mastadon/zsharp/function_f/$ex_name.zok r1cs --action spartan-setup --prover-key IVC_P --verifier-key IVC_V
 }
 
 

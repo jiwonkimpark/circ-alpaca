@@ -60,12 +60,21 @@ enum ProofImpl {
 }
 
 fn main() {
+    println!("========== CIRC - ZK ==========");
+    let total_timer = Instant::now();
+
+    let timer = Instant::now();
+
     env_logger::Builder::from_default_env()
         .format_level(false)
         .format_timestamp(None)
         .init();
     let opts = Options::parse();
     circ::cfg::set(&opts.circ);
+
+    let elapsed = timer.elapsed();
+    println!("zk setting (before r1cs) time: {:.?}", elapsed);
+
     match (opts.action, opts.proof_impl) {
         #[cfg(feature = "bellman")]
         (ProofAction::Prove, ProofImpl::Groth16) => {
@@ -144,6 +153,10 @@ fn main() {
         #[cfg(not(feature = "spartan"))]
         (ProofAction::Spartan, _) => panic!("Missing feature: spartan"),
     }
+
+    let total_elapsed = total_timer.elapsed();
+    println!("total circ-zk time: {:.?}", total_elapsed);
+    println!("==============================");
 }
 
 fn read_proof() -> NIZK {

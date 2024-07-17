@@ -25,9 +25,13 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     p_path: P,
     inputs_map: &HashMap<String, Value>,
 ) {
-    let mut now = Instant::now();
+    println!("========== CIRC - R1CS - SPARTAN - GET CIRCUIT VALUES ==========");
+    let total_timer = Instant::now();
 
+    let mut timer = Instant::now();
     let prover_data: ProverData = read_prover_data::<_>(p_path).expect("failed to read prover data");
+    let mut elapsed = timer.elapsed();
+    println!("read prover data time: {:.2?}", elapsed);
 
     // check modulus
     let f_mod = prover_data.r1cs.field.modulus();
@@ -42,15 +46,14 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     );
 
     // add r1cs witness to values
+    timer = Instant::now();
     let values = prover_data.extend_r1cs_witness(inputs_map);
     prover_data.r1cs.check_all(&values);
-
     assert_eq!(values.len(), prover_data.r1cs.vars.len());
+    elapsed = timer.elapsed();
+    println!("generate r1cs witness values time: {:.2?}", elapsed);
 
-    let mut elapsed = now.elapsed();
-    println!("Elapsed for generating values: {:.2?}", elapsed);
-
-    now = Instant::now();
+    timer = Instant::now();
     // write r1cs
     // let mut file = File::create("./circ-mastadon/zsharp/r1cs.json").unwrap();
     // file.write_all(
@@ -66,9 +69,12 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
             .expect("failed to serialize values to json")
             .as_bytes()
     ).expect("Failed to write values to the file");
+    elapsed = timer.elapsed();
+    println!("writing r1cs_values.json file: {:.2?}", elapsed);
 
-    elapsed = now.elapsed();
-    println!("Elapsed for generating r1cs_values.json file: {:.2?}", elapsed);
+    let total_elapsed = total_timer.elapsed();
+    println!("total circ r1cs values time: {:.?}", total_elapsed);
+    println!("==============================");
 }
 
 /// generate spartan proof

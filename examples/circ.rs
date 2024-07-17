@@ -179,6 +179,9 @@ fn determine_language(l: &Language, input_path: &Path) -> DeterminedLanguage {
 
 #[allow(unused_variables, unreachable_code)]
 fn main() {
+    println!("========== CIRC - CIRC ==========");
+    let total_timer = Instant::now();
+    let timer = Instant::now();
     env_logger::Builder::from_default_env()
         .format_level(false)
         .format_timestamp(None)
@@ -299,6 +302,10 @@ fn main() {
         }
     };
     println!("Running backend");
+
+    let elapsed = timer.elapsed();
+    println!("circ setting (before r1cs) time: {:.?}", elapsed);
+
     match options.backend {
         #[cfg(feature = "r1cs")]
         Backend::R1cs {
@@ -309,7 +316,6 @@ fn main() {
             ..
         } => {
             let mut now = Instant::now();
-
             println!("Converting to r1cs");
             let cs = cs.get("main");
             trace!("IR: {}", circ::ir::term::text::serialize_computation(cs));
@@ -327,7 +333,7 @@ fn main() {
             }
             let (prover_data, verifier_data) = r1cs.finalize(cs);
             let mut elapsed = now.elapsed();
-            println!("Elapsed for generating r1cs: {:.2?}", elapsed);
+            println!("generating r1cs time: {:.2?}", elapsed);
             match action {
                 ProofAction::Count => (),
                 #[cfg(feature = "bellman")]
@@ -370,13 +376,15 @@ fn main() {
                 ProofAction::CpSetup => panic!("Missing feature: bellman"),
                 #[cfg(feature = "spartan")]
                 ProofAction::SpartanSetup => {
+                    println!("========== CIRC - R1CS - SPARTAN - SETUP ==========");
                     let mut now = Instant::now();
 
                     write_data::<_, _>(prover_key, verifier_key, &prover_data, &verifier_data)
                         .unwrap();
 
                     let mut elapsed = now.elapsed();
-                    println!("Elapsed for writing data in setup: {:.2?}", elapsed);
+                    println!("Spartan setup time: {:.2?}", elapsed);
+                    println!("==============================");
                 }
                 #[cfg(not(feature = "spartan"))]
                 ProofAction::SpartanSetup => panic!("Missing feature: spartan"),
@@ -473,4 +481,7 @@ fn main() {
             panic!("Missing feature: smt");
         }
     }
+    let total_elapsed = total_timer.elapsed();
+    println!("total circ-circ time: {:.?}", total_elapsed);
+    println!("==============================");
 }

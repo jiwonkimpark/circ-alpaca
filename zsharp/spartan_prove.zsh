@@ -15,9 +15,7 @@ modulus=289480223093290488558927462521719769633630564819416473796797427483933629
 
 function spartan_test_prove {
       ex_name=$1
-      $BIN --field-custom-modulus $modulus ./circ-mastadon/zsharp/$ex_name.zok r1cs --action spartan-setup
       $ZK_BIN --field-custom-modulus $modulus --pin ./circ-mastadon/zsharp/$ex_name.zok.pin --action spartan-prove
-      rm -rf P V pi
 }
 
 spartan_test_prove relation_r_tmp
