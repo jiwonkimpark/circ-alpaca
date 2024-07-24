@@ -171,7 +171,6 @@ fn read_proof() -> NIZK {
 
     let proof: NIZK = serde_json::from_reader(reader).expect("failed to parse to json");
 
-    println!("{:?}", proof);
     proof
 }
 

@@ -11,8 +11,9 @@ use rug::Integer;
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
+use crate::ir::term::text::parse_value_map;
 
 /// Hold Spartan variables
 #[derive(Debug)]
@@ -79,6 +80,14 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     println!("==============================");
 }
 
+pub fn prove_with_file<P: AsRef<Path>>(
+    p_path: P,
+    pin: P
+) -> io::Result<(NIZKGens, Instance, NIZK)> {
+    let prover_input_map = parse_value_map(&std::fs::read(pin).unwrap());
+    prove(p_path, &prover_input_map)
+}
+
 /// generate spartan proof
 pub fn prove<P: AsRef<Path>>(
     p_path: P,
@@ -132,6 +141,17 @@ pub fn prove<P: AsRef<Path>>(
     println!("write gens to file: {:.2?}", elapsed);
 
     Ok((gens, inst, pf))
+}
+
+pub fn verify_with_file<P: AsRef<Path>>(
+    v_path: P,
+    vin: P,
+    gens: &NIZKGens,
+    inst: &Instance,
+    proof: NIZK,
+) -> io::Result<()> {
+    let verifier_input_map = parse_value_map(&std::fs::read(vin).unwrap());
+    verify(v_path, &verifier_input_map, gens, inst, proof)
 }
 
 /// verify spartan proof
