@@ -21,6 +21,8 @@ pub struct Variable {
     value: [u8; 32],
 }
 
+const DIR: &str = "/Users/jiwonkim/research/tmp/Mastadon";
+
 pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     p_path: P,
     inputs_map: &HashMap<String, Value>,
@@ -29,7 +31,7 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     let total_timer = Instant::now();
 
     let mut timer = Instant::now();
-    let prover_data: ProverData = read_prover_data::<_>(p_path).expect("failed to read prover data");
+    let prover_data: ProverData = read_prover_data::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_P").expect("failed to read prover data");
     let mut elapsed = timer.elapsed();
     println!("read prover data time: {:.2?}", elapsed);
 
@@ -63,7 +65,7 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     // ).expect("Failed to write r1cs to the file");
 
     // write values
-    let mut file = File::create("./circ-mastadon/zsharp/r1cs_values.json").unwrap();
+    let mut file = File::create(format!("{}/circ-mastadon/zsharp/r1cs_values.json", DIR)).unwrap();
     file.write_all(
         serde_json::to_string(&values)
             .expect("failed to serialize values to json")
@@ -84,31 +86,50 @@ pub fn prove<P: AsRef<Path>>(
 ) -> io::Result<(NIZKGens, Instance, NIZK)> {
     let prover_data = read_prover_data::<_>(p_path)?;
 
+    let mut now = Instant::now();
     println!("Converting R1CS to Spartan");
     let (inst, wit, inps, num_cons, num_vars, num_inputs) =
         spartan::r1cs_to_spartan(&prover_data, inputs_map);
+    let mut elapsed = now.elapsed();
+    println!("spartan::r1cs_to_spartan: {:.2?}", elapsed);
+
 
     println!("Proving with Spartan");
     assert_ne!(num_cons, 0, "No constraints");
 
+    now = Instant::now();
     // produce public parameters
     println!("Producing public parameters");
     let gens = NIZKGens::new(num_cons, num_vars, num_inputs);
+    elapsed = now.elapsed();
+    println!("NIZKGens::new: {:.2?}", elapsed);
+
+    now = Instant::now();
     // produce proof
     println!("Producing proof");
     let mut prover_transcript = Transcript::new(b"nizk_example");
     let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
     println!("Proof produced");
+    elapsed = now.elapsed();
+    println!("NIZK::prove: {:.2?}", elapsed);
 
-    let mut file = File::create("./circ-mastadon/zsharp/proof.json").unwrap();
+    now = Instant::now();
+    let mut file = File::create(format!("{}/circ-mastadon/zsharp/proof.json", DIR)).unwrap();
     file.write_all(serde_json::to_string(&pf).expect("pf to json string failed").as_bytes()).expect("write into file failed");
+    elapsed = now.elapsed();
+    println!("write proof to file: {:.2?}", elapsed);
 
-    file = File::create("./circ-mastadon/zsharp/inst.json").unwrap();
+    now = Instant::now();
+    file = File::create(format!("{}/circ-mastadon/zsharp/inst.json", DIR)).unwrap();
     file.write_all(serde_json::to_string(&inst)?.as_bytes())?;
+    elapsed = now.elapsed();
+    println!("write inst to file: {:.2?}", elapsed);
 
-    file = File::create("./circ-mastadon/zsharp/gens.json").unwrap();
+    now = Instant::now();
+    file = File::create(format!("{}/circ-mastadon/zsharp/gens.json", DIR)).unwrap();
     file.write_all(serde_json::to_string(&gens).expect("pf to json string failed").as_bytes()).expect("write into file failed");
-
+    elapsed = now.elapsed();
+    println!("write gens to file: {:.2?}", elapsed);
 
     Ok((gens, inst, pf))
 }

@@ -1,3 +1,4 @@
+use std::fmt::format;
 use std::io::BufReader;
 use circ::cfg::{
     clap::{self, Parser, ValueEnum},
@@ -135,10 +136,14 @@ fn main() {
             let prover_input_map = parse_value_map(&std::fs::read(opts.pin).unwrap());
 
             let mut elapsed = now.elapsed();
-            println!("Elapsed for generating prover_input_map: {:.2?}", elapsed);
+            println!("generating prover_input_map: {:.2?}", elapsed);
 
             println!("Spartan Proving");
+            now = Instant::now();
             let (_gens, _inst, _proof) = spartan::prove(opts.prover_key, &prover_input_map).unwrap();
+            elapsed = now.elapsed();
+            println!("generating spartan::prove: {:.2?}", elapsed);
+
         }
         #[cfg(feature = "spartan")]
         (ProofAction::SpartanVerify, _) => {
@@ -160,7 +165,7 @@ fn main() {
 }
 
 fn read_proof() -> NIZK {
-    let path = Path::new("./circ-mastadon/zsharp/proof.json");
+    let path = Path::new("/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/zsharp/proof.json");
     let file = std::fs::File::open(path).expect("Failed to read proof file");
     let reader = BufReader::new(file);
 
@@ -171,7 +176,7 @@ fn read_proof() -> NIZK {
 }
 
 fn read_instance() -> Instance {
-    let path = Path::new("./circ-mastadon/zsharp/inst.json");
+    let path = Path::new("/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/zsharp/inst.json");
     let file = std::fs::File::open(path).expect("Failed to read instance file");
     let reader = BufReader::new(file);
 
@@ -180,7 +185,7 @@ fn read_instance() -> Instance {
 }
 
 fn read_gens() -> NIZKGens {
-    let path = Path::new("./circ-mastadon/zsharp/gens.json");
+    let path = Path::new("/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/zsharp/gens.json");
     let file = std::fs::File::open(path).expect("Failed to read gens file");
     let reader = BufReader::new(file);
 
