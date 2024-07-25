@@ -24,6 +24,46 @@ pub struct Variable {
 
 const DIR: &str = "/Users/jiwonkim/research/tmp/Mastadon";
 
+
+pub fn r1cs_values_with<P: AsRef<Path>>(
+    pin: P
+) -> io::Result<HashMap<Var, FieldV>> {
+    println!("========== CIRC - R1CS - SPARTAN - GET CIRCUIT VALUES ==========");
+    let total_timer = Instant::now();
+
+    let inputs_map = parse_value_map(&std::fs::read(pin).unwrap());
+
+    let mut timer = Instant::now();
+    let prover_data: ProverData = read_prover_data::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_P").expect("failed to read prover data");
+    let mut elapsed = timer.elapsed();
+    println!("read prover data time: {:.2?}", elapsed);
+
+    // check modulus
+    let f_mod = prover_data.r1cs.field.modulus();
+    let s_mod = Integer::from_str_radix(
+        "28948022309329048855892746252171976963363056481941647379679742748393362948097",
+        10,
+    )
+        .unwrap();
+    assert_eq!(
+        &s_mod, f_mod,
+        "\nR1CS has modulus \n{s_mod},\n but Spartan CS expects \n{f_mod}",
+    );
+
+    // add r1cs witness to values
+    timer = Instant::now();
+    let values = prover_data.extend_r1cs_witness(&inputs_map);
+    prover_data.r1cs.check_all(&values);
+    assert_eq!(values.len(), prover_data.r1cs.vars.len());
+    elapsed = timer.elapsed();
+    println!("generate r1cs witness values time: {:.2?}", elapsed);
+
+    let total_elapsed = total_timer.elapsed();
+    println!("total circ r1cs values time: {:.?}", total_elapsed);
+    println!("==============================");
+
+    Ok(values)
+}
 pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     p_path: P,
     inputs_map: &HashMap<String, Value>,
@@ -84,8 +124,38 @@ pub fn prove_with_file<P: AsRef<Path>>(
     p_path: P,
     pin: P
 ) -> io::Result<(NIZKGens, Instance, NIZK)> {
-    let prover_input_map = parse_value_map(&std::fs::read(pin).unwrap());
-    prove(p_path, &prover_input_map)
+    let inputs_map = parse_value_map(&std::fs::read(pin).unwrap());
+
+    let prover_data = read_prover_data::<_>(p_path)?;
+
+    let mut now = Instant::now();
+    println!("Converting R1CS to Spartan");
+    let (inst, wit, inps, num_cons, num_vars, num_inputs) =
+        spartan::r1cs_to_spartan(&prover_data, &inputs_map);
+    let mut elapsed = now.elapsed();
+    println!("spartan::r1cs_to_spartan: {:.2?}", elapsed);
+
+
+    println!("Proving with Spartan");
+    assert_ne!(num_cons, 0, "No constraints");
+
+    now = Instant::now();
+    // produce public parameters
+    println!("Producing public parameters");
+    let gens = NIZKGens::new(num_cons, num_vars, num_inputs);
+    elapsed = now.elapsed();
+    println!("NIZKGens::new: {:.2?}", elapsed);
+
+    now = Instant::now();
+    // produce proof
+    println!("Producing proof");
+    let mut prover_transcript = Transcript::new(b"nizk_example");
+    let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
+    println!("Proof produced");
+    elapsed = now.elapsed();
+    println!("NIZK::prove: {:.2?}", elapsed);
+
+    Ok((gens, inst, pf))
 }
 
 /// generate spartan proof
