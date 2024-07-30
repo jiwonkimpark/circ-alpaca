@@ -25,18 +25,21 @@ pub struct Variable {
 const DIR: &str = "/Users/jiwonkim/research/tmp/Mastadon";
 
 
-pub fn r1cs_values_with<P: AsRef<Path>>(
-    pin: P
+pub fn r1cs_values_with(
+    r1cs: &R1csFinal,
+    inputs_map: &HashMap<String, Value>
 ) -> io::Result<HashMap<Var, FieldV>> {
     println!("========== CIRC - R1CS - SPARTAN - GET CIRCUIT VALUES ==========");
     let total_timer = Instant::now();
 
-    let inputs_map = parse_value_map(&std::fs::read(pin).unwrap());
-
     let mut timer = Instant::now();
-    let prover_data: ProverData = read_prover_data::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_P").expect("failed to read prover data");
+    let precompute: StagedWitComp = read_precompute::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE").expect("failed to read precompute data");
+    let prover_data = ProverData {
+        r1cs: r1cs.clone(),
+        precompute,
+    };
     let mut elapsed = timer.elapsed();
-    println!("read prover data time: {:.2?}", elapsed);
+    println!("read prover precompute: {:.2?}", elapsed);
 
     // check modulus
     let f_mod = prover_data.r1cs.field.modulus();
@@ -120,18 +123,14 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     println!("==============================");
 }
 
-pub fn prove_with_file<P: AsRef<Path>>(
-    p_path: P,
-    pin: P
+pub fn prove_with(
+    prover_data: &ProverData,
+    inputs_map: &HashMap<String, Value>,
 ) -> io::Result<(NIZKGens, Instance, NIZK)> {
-    let inputs_map = parse_value_map(&std::fs::read(pin).unwrap());
-
-    let prover_data = read_prover_data::<_>(p_path)?;
-
     let mut now = Instant::now();
     println!("Converting R1CS to Spartan");
     let (inst, wit, inps, num_cons, num_vars, num_inputs) =
-        spartan::r1cs_to_spartan(&prover_data, &inputs_map);
+        spartan::r1cs_to_spartan(prover_data, &inputs_map);
     let mut elapsed = now.elapsed();
     println!("spartan::r1cs_to_spartan: {:.2?}", elapsed);
 
@@ -192,36 +191,33 @@ pub fn prove<P: AsRef<Path>>(
     elapsed = now.elapsed();
     println!("NIZK::prove: {:.2?}", elapsed);
 
-    now = Instant::now();
-    let mut file = File::create(format!("{}/circ-mastadon/zsharp/proof.json", DIR)).unwrap();
-    file.write_all(serde_json::to_string(&pf).expect("pf to json string failed").as_bytes()).expect("write into file failed");
-    elapsed = now.elapsed();
-    println!("write proof to file: {:.2?}", elapsed);
-
-    now = Instant::now();
-    file = File::create(format!("{}/circ-mastadon/zsharp/inst.json", DIR)).unwrap();
-    file.write_all(serde_json::to_string(&inst)?.as_bytes())?;
-    elapsed = now.elapsed();
-    println!("write inst to file: {:.2?}", elapsed);
-
-    now = Instant::now();
-    file = File::create(format!("{}/circ-mastadon/zsharp/gens.json", DIR)).unwrap();
-    file.write_all(serde_json::to_string(&gens).expect("pf to json string failed").as_bytes()).expect("write into file failed");
-    elapsed = now.elapsed();
-    println!("write gens to file: {:.2?}", elapsed);
-
     Ok((gens, inst, pf))
 }
 
-pub fn verify_with_file<P: AsRef<Path>>(
-    v_path: P,
-    vin: P,
+pub fn verify_with(
+    verifier_data: &VerifierData,
+    inputs_map: &HashMap<String, Value>,
     gens: &NIZKGens,
     inst: &Instance,
     proof: NIZK,
 ) -> io::Result<()> {
-    let verifier_input_map = parse_value_map(&std::fs::read(vin).unwrap());
-    verify(v_path, &verifier_input_map, gens, inst, proof)
+    let values = verifier_data.eval(inputs_map);
+
+    let mut inp = Vec::new();
+    for v in &values {
+        let scalar = int_to_scalar(&v.i());
+        inp.push(scalar.to_bytes());
+    }
+    let inputs = InputsAssignment::new(&inp).unwrap();
+
+    println!("Verifying with Spartan");
+    let mut verifier_transcript = Transcript::new(b"nizk_example");
+    assert!(proof
+        .verify(inst, &inputs, &mut verifier_transcript, gens)
+        .is_ok());
+
+    println!("Proof Verification Successful!");
+    Ok(())
 }
 
 /// verify spartan proof
@@ -425,6 +421,18 @@ fn write_prover_data<P: AsRef<Path>>(path: P, data: &ProverData) -> io::Result<(
 fn read_prover_data<P: AsRef<Path>>(path: P) -> io::Result<ProverData> {
     let mut file = BufReader::new(File::open(path)?);
     let data: ProverData = deserialize_from(&mut file).unwrap();
+    Ok(data)
+}
+
+pub fn write_precompute<P: AsRef<Path>>(path: P, data: &StagedWitComp) -> io::Result<()> {
+    let mut file = BufWriter::new(File::create(path)?);
+    bincode::serde::encode_into_std_write(&data, &mut file, bincode::config::legacy()).unwrap();
+    Ok(())
+}
+
+pub fn read_precompute<P: AsRef<Path>>(path: P) -> io::Result<wit_comp::StagedWitComp> {
+    let mut file = BufReader::new(File::open(path)?);
+    let data: StagedWitComp = bincode::serde::decode_from_std_read(&mut file, bincode::config::legacy()).unwrap();
     Ok(data)
 }
 
