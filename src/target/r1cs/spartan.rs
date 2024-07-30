@@ -1,6 +1,5 @@
 //! Export circ R1cs to Spartan
 use crate::target::r1cs::*;
-use bincode::{deserialize_from, serialize_into};
 use fxhash::{FxHashMap as HashMap};
 use gmp_mpfr_sys::gmp::limb_t;
 use libspartan::{Assignment, InputsAssignment, Instance, NIZKGens, VarsAssignment, NIZK};
@@ -14,6 +13,7 @@ use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use crate::ir::term::text::parse_value_map;
+use crate::target::r1cs::wit_comp::StagedWitComp;
 
 /// Hold Spartan variables
 #[derive(Debug)]
@@ -414,13 +414,13 @@ pub fn write_data<P1: AsRef<Path>, P2: AsRef<Path>>(
 
 fn write_prover_data<P: AsRef<Path>>(path: P, data: &ProverData) -> io::Result<()> {
     let mut file = BufWriter::new(File::create(path)?);
-    serialize_into(&mut file, &data).unwrap();
+    bincode::serde::encode_into_std_write(&data, &mut file, bincode::config::legacy()).unwrap();
     Ok(())
 }
 
-fn read_prover_data<P: AsRef<Path>>(path: P) -> io::Result<ProverData> {
+pub fn read_prover_data<P: AsRef<Path>>(path: P) -> io::Result<ProverData> {
     let mut file = BufReader::new(File::open(path)?);
-    let data: ProverData = deserialize_from(&mut file).unwrap();
+    let data: ProverData = bincode::serde::decode_from_std_read(&mut file, bincode::config::legacy()).unwrap();
     Ok(data)
 }
 
@@ -438,12 +438,12 @@ pub fn read_precompute<P: AsRef<Path>>(path: P) -> io::Result<wit_comp::StagedWi
 
 fn write_verifier_data<P: AsRef<Path>>(path: P, data: &VerifierData) -> io::Result<()> {
     let mut file = BufWriter::new(File::create(path)?);
-    serialize_into(&mut file, &data).unwrap();
+    bincode::serde::encode_into_std_write(&data, &mut file, bincode::config::legacy()).unwrap();
     Ok(())
 }
 
-fn read_verifier_data<P: AsRef<Path>>(path: P) -> io::Result<VerifierData> {
+pub fn read_verifier_data<P: AsRef<Path>>(path: P) -> io::Result<VerifierData> {
     let mut file = BufReader::new(File::open(path)?);
-    let data: VerifierData = deserialize_from(&mut file).unwrap();
+    let data: VerifierData = bincode::serde::decode_from_std_read(&mut file, bincode::config::legacy()).unwrap();
     Ok(data)
 }

@@ -4,7 +4,6 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use std::path::Path;
 
-use bincode::{deserialize_from, serialize_into};
 use fxhash::FxHashMap as HashMap;
 use serde::{Deserialize, Serialize};
 
@@ -14,14 +13,15 @@ use crate::ir::term::Value;
 
 fn serialize_into_file<S: Serialize, P: AsRef<Path>>(data: &S, path: P) -> std::io::Result<()> {
     let mut file = BufWriter::new(File::create(path.as_ref())?);
-    serialize_into(&mut file, data).unwrap();
+    bincode::serde::encode_into_std_write(data, &mut file, bincode::config::legacy());
+    // serialize_into(&mut file, data).unwrap();
     Ok(())
 }
 
 fn deserialize_from_file<D: for<'a> Deserialize<'a>, P: AsRef<Path>>(
     path: P,
 ) -> std::io::Result<D> {
-    Ok(deserialize_from(BufReader::new(File::open(path.as_ref())?)).unwrap())
+    Ok(bincode::serde::decode_from_std_read(&mut BufReader::new(File::open(path.as_ref())?), bincode::config::legacy()).unwrap())
 }
 
 fn value_map_from_path<P: AsRef<Path>>(path: P) -> std::io::Result<HashMap<String, Value>> {
