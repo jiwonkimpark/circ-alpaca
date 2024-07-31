@@ -12,7 +12,6 @@ use std::io;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use crate::ir::term::text::parse_value_map;
 use crate::target::r1cs::wit_comp::StagedWitComp;
 
 /// Hold Spartan variables
@@ -34,15 +33,17 @@ pub fn r1cs_values_with(
 
     let mut timer = Instant::now();
     let precompute: StagedWitComp = read_precompute::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE").expect("failed to read precompute data");
-    let prover_data = ProverData {
-        r1cs: r1cs.clone(),
-        precompute,
-    };
+    // Clone takes long, so don't construct ProverData
+    // let prover_data = ProverData {
+    //     r1cs: r1cs.clone(),
+    //     precompute,
+    // };
     let mut elapsed = timer.elapsed();
     println!("read prover precompute: {:.2?}", elapsed);
 
+    timer = Instant::now();
     // check modulus
-    let f_mod = prover_data.r1cs.field.modulus();
+    let f_mod = r1cs.field.modulus();
     let s_mod = Integer::from_str_radix(
         "28948022309329048855892746252171976963363056481941647379679742748393362948097",
         10,
@@ -52,12 +53,14 @@ pub fn r1cs_values_with(
         &s_mod, f_mod,
         "\nR1CS has modulus \n{s_mod},\n but Spartan CS expects \n{f_mod}",
     );
+    elapsed = timer.elapsed();
+    println!("check modulus: {:.2?}", elapsed);
 
     // add r1cs witness to values
     timer = Instant::now();
-    let values = prover_data.extend_r1cs_witness(&inputs_map);
-    prover_data.r1cs.check_all(&values);
-    assert_eq!(values.len(), prover_data.r1cs.vars.len());
+    let values = r1cs.extend_r1cs_witness(&precompute, &inputs_map);
+    r1cs.check_all(&values);
+    assert_eq!(values.len(), r1cs.vars.len());
     elapsed = timer.elapsed();
     println!("generate r1cs witness values time: {:.2?}", elapsed);
 
