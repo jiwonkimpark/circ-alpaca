@@ -22,6 +22,9 @@ pub mod proof;
 pub mod spartan;
 pub mod trans;
 pub mod wit_comp;
+#[cfg(feature = "spartan")]
+pub mod spartan_opt;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A Rank 1 Constraint System.

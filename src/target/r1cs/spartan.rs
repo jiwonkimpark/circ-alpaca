@@ -21,55 +21,14 @@ pub struct Variable {
     value: [u8; 32],
 }
 
+impl Variable {
+    pub fn sid(&self) -> usize { self.sid }
+
+    pub fn value(&self) -> [u8; 32] { self.value }
+}
+
 const DIR: &str = "/Users/jiwonkim/research/tmp/Mastadon";
 
-
-pub fn r1cs_values_with(
-    r1cs: &R1csFinal,
-    inputs_map: &HashMap<String, Value>
-) -> io::Result<HashMap<Var, FieldV>> {
-    println!("========== CIRC - R1CS - SPARTAN - GET CIRCUIT VALUES ==========");
-    let total_timer = Instant::now();
-
-    let mut timer = Instant::now();
-    let precompute: StagedWitComp = read_precompute::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE").expect("failed to read precompute data");
-    // Clone takes long, so don't construct ProverData
-    // let prover_data = ProverData {
-    //     r1cs: r1cs.clone(),
-    //     precompute,
-    // };
-    let mut elapsed = timer.elapsed();
-    println!("read prover precompute: {:.2?}", elapsed);
-
-    timer = Instant::now();
-    // check modulus
-    let f_mod = r1cs.field.modulus();
-    let s_mod = Integer::from_str_radix(
-        "28948022309329048855892746252171976963363056481941647379679742748393362948097",
-        10,
-    )
-        .unwrap();
-    assert_eq!(
-        &s_mod, f_mod,
-        "\nR1CS has modulus \n{s_mod},\n but Spartan CS expects \n{f_mod}",
-    );
-    elapsed = timer.elapsed();
-    println!("check modulus: {:.2?}", elapsed);
-
-    // add r1cs witness to values
-    timer = Instant::now();
-    let values = r1cs.extend_r1cs_witness(&precompute, &inputs_map);
-    r1cs.check_all(&values);
-    assert_eq!(values.len(), r1cs.vars.len());
-    elapsed = timer.elapsed();
-    println!("generate r1cs witness values time: {:.2?}", elapsed);
-
-    let total_elapsed = total_timer.elapsed();
-    println!("total circ r1cs values time: {:.?}", total_elapsed);
-    println!("==============================");
-
-    Ok(values)
-}
 pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     p_path: P,
     inputs_map: &HashMap<String, Value>,
@@ -126,40 +85,6 @@ pub fn r1cs_with_prover_input<P: AsRef<Path>>(
     println!("==============================");
 }
 
-pub fn prove_with(
-    prover_data: &ProverData,
-    inputs_map: &HashMap<String, Value>,
-) -> io::Result<(NIZKGens, Instance, NIZK)> {
-    let mut now = Instant::now();
-    println!("Converting R1CS to Spartan");
-    let (inst, wit, inps, num_cons, num_vars, num_inputs) =
-        spartan::r1cs_to_spartan(prover_data, &inputs_map);
-    let mut elapsed = now.elapsed();
-    println!("spartan::r1cs_to_spartan: {:.2?}", elapsed);
-
-
-    println!("Proving with Spartan");
-    assert_ne!(num_cons, 0, "No constraints");
-
-    now = Instant::now();
-    // produce public parameters
-    println!("Producing public parameters");
-    let gens = NIZKGens::new(num_cons, num_vars, num_inputs);
-    elapsed = now.elapsed();
-    println!("NIZKGens::new: {:.2?}", elapsed);
-
-    now = Instant::now();
-    // produce proof
-    println!("Producing proof");
-    let mut prover_transcript = Transcript::new(b"nizk_example");
-    let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
-    println!("Proof produced");
-    elapsed = now.elapsed();
-    println!("NIZK::prove: {:.2?}", elapsed);
-
-    Ok((gens, inst, pf))
-}
-
 /// generate spartan proof
 pub fn prove<P: AsRef<Path>>(
     p_path: P,
@@ -195,32 +120,6 @@ pub fn prove<P: AsRef<Path>>(
     println!("NIZK::prove: {:.2?}", elapsed);
 
     Ok((gens, inst, pf))
-}
-
-pub fn verify_with(
-    verifier_data: &VerifierData,
-    inputs_map: &HashMap<String, Value>,
-    gens: &NIZKGens,
-    inst: &Instance,
-    proof: NIZK,
-) -> io::Result<()> {
-    let values = verifier_data.eval(inputs_map);
-
-    let mut inp = Vec::new();
-    for v in &values {
-        let scalar = int_to_scalar(&v.i());
-        inp.push(scalar.to_bytes());
-    }
-    let inputs = InputsAssignment::new(&inp).unwrap();
-
-    println!("Verifying with Spartan");
-    let mut verifier_transcript = Transcript::new(b"nizk_example");
-    assert!(proof
-        .verify(inst, &inputs, &mut verifier_transcript, gens)
-        .is_ok());
-
-    println!("Proof Verification Successful!");
-    Ok(())
 }
 
 /// verify spartan proof
@@ -362,7 +261,7 @@ pub fn r1cs_to_spartan(
 }
 
 // works fine with changing a field representation (Integer) to Fq (Scalar)
-fn int_to_scalar(i: &Integer) -> Scalar {
+pub fn int_to_scalar(i: &Integer) -> Scalar {
     let mut accumulator = Scalar::zero();
     let limb_bits = (std::mem::size_of::<limb_t>() as u64) << 3;
     assert_eq!(limb_bits, 64);
@@ -380,7 +279,7 @@ fn int_to_scalar(i: &Integer) -> Scalar {
 }
 
 // circ Lc (const, monomials <Integer>) -> Vec<Variable>
-fn lc_to_v(lc: &Lc, const_id: usize, trans: &HashMap<Var, usize>) -> Vec<Variable> {
+pub fn lc_to_v(lc: &Lc, const_id: usize, trans: &HashMap<Var, usize>) -> Vec<Variable> {
     let mut v: Vec<Variable> = Vec::new();
 
     for (k, m) in &lc.monomials {
@@ -424,18 +323,6 @@ fn write_prover_data<P: AsRef<Path>>(path: P, data: &ProverData) -> io::Result<(
 pub fn read_prover_data<P: AsRef<Path>>(path: P) -> io::Result<ProverData> {
     let mut file = BufReader::new(File::open(path)?);
     let data: ProverData = bincode::serde::decode_from_std_read(&mut file, bincode::config::legacy()).unwrap();
-    Ok(data)
-}
-
-pub fn write_precompute<P: AsRef<Path>>(path: P, data: &StagedWitComp) -> io::Result<()> {
-    let mut file = BufWriter::new(File::create(path)?);
-    bincode::serde::encode_into_std_write(&data, &mut file, bincode::config::legacy()).unwrap();
-    Ok(())
-}
-
-pub fn read_precompute<P: AsRef<Path>>(path: P) -> io::Result<wit_comp::StagedWitComp> {
-    let mut file = BufReader::new(File::open(path)?);
-    let data: StagedWitComp = bincode::serde::decode_from_std_read(&mut file, bincode::config::legacy()).unwrap();
     Ok(data)
 }
 

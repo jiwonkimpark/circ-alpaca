@@ -57,6 +57,7 @@ use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use circ::target::r1cs::spartan_opt::write_preprocessed_spartan;
 
 #[derive(Debug, Parser)]
 #[command(name = "circ", about = "CirC: the circuit compiler")]
@@ -98,6 +99,10 @@ enum Backend {
         prover_key: PathBuf,
         #[arg(long, default_value = "V")]
         verifier_key: PathBuf,
+        #[arg(long, default_value = "GENS")]
+        gens: PathBuf,
+        #[arg(long, default_value = "INSTANCE")]
+        instance: PathBuf,
         #[arg(long, default_value = "50")]
         /// linear combination constraints up to this size will be eliminated
         lc_elimination_thresh: usize,
@@ -313,6 +318,8 @@ fn main() {
             prover_key,
             verifier_key,
             proof_impl,
+            gens,
+            instance,
             ..
         } => {
             let mut now = Instant::now();
@@ -381,6 +388,7 @@ fn main() {
 
                     write_data::<_, _>(prover_key, verifier_key, &prover_data, &verifier_data)
                         .unwrap();
+                    write_preprocessed_spartan::<_, _>(gens, instance, &prover_data).unwrap();
 
                     let mut elapsed = now.elapsed();
                     println!("Spartan setup time: {:.2?}", elapsed);
