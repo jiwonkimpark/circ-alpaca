@@ -10,9 +10,8 @@ use rug::Integer;
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use std::time::Instant;
-use crate::target::r1cs::wit_comp::StagedWitComp;
 
 /// Hold Spartan variables
 #[derive(Debug)]

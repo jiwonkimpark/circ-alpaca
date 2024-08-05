@@ -88,13 +88,10 @@ pub fn prove(
     inst: &Instance
 ) -> io::Result<NIZK> {
     let mut now = Instant::now();
-    println!("Converting R1CS to Spartan");
     let (witnesses, inputs) = spartan_witnesses_and_inputs(prover_data, inst, inputs_map);
     let mut elapsed = now.elapsed();
     println!("spartan::r1cs_to_spartan: {:.2?}", elapsed);
 
-
-    println!("Proving with Spartan");
     now = Instant::now();
     let mut prover_transcript = Transcript::new(b"nizk_example");
     let pf = NIZK::prove(inst, witnesses, &inputs, gens, &mut prover_transcript);
