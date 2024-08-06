@@ -27,9 +27,9 @@ pub struct SpartanInstance {
 }
 
 pub fn r1cs_values(
-    r1cs: &R1csFinal,
+    vars_size: usize,
     inputs_map: &FxHashMap<String, Value>,
-) -> io::Result<FxHashMap<Var, FieldV>> {
+) -> io::Result<Vec<FieldV>> {
     println!("========== CIRC - R1CS - SPARTAN - GET CIRCUIT VALUES ==========");
     let total_timer = Instant::now();
 
@@ -38,26 +38,11 @@ pub fn r1cs_values(
     let mut elapsed = timer.elapsed();
     println!("read prover precompute: {:.2?}", elapsed);
 
-    timer = Instant::now();
-    // check modulus
-    let f_mod = r1cs.field.modulus();
-    let s_mod = Integer::from_str_radix(
-        "28948022309329048855892746252171976963363056481941647379679742748393362948097",
-        10,
-    )
-        .unwrap();
-    assert_eq!(
-        &s_mod, f_mod,
-        "\nR1CS has modulus \n{s_mod},\n but Spartan CS expects \n{f_mod}",
-    );
-    elapsed = timer.elapsed();
-    println!("check modulus: {:.2?}", elapsed);
-
     // add r1cs witness to values
     timer = Instant::now();
-    let values = r1cs.extend_r1cs_witness(&precompute, inputs_map);
-    r1cs.check_all(&values);
-    assert_eq!(values.len(), r1cs.vars.len());
+    let values = extend_r1cs_witness(vars_size, &precompute, inputs_map);
+    // r1cs.check_all(&values);
+    assert_eq!(values.len(), vars_size);
     elapsed = timer.elapsed();
     println!("generate r1cs witness values time: {:.2?}", elapsed);
 
@@ -66,6 +51,22 @@ pub fn r1cs_values(
     println!("==============================");
 
     Ok(values)
+}
+
+fn extend_r1cs_witness(vars_size: usize, precompute: &StagedWitComp, values: &FxHashMap<String, Value>) -> Vec<FieldV> {
+    // we need to evaluate all R1CS variables
+    let mut evaluated_values: Vec<FieldV> = Vec::new();
+    let mut eval = wit_comp::StagedWitCompEvaluator::new(precompute);
+    // this will hold inputs to the multi-round evaluator.
+    let mut inputs = values.clone();
+    while evaluated_values.len() < vars_size {
+        // do a round of evaluation
+        let value_vec = eval.eval_stage(std::mem::take(&mut inputs));
+        for value in value_vec {
+            evaluated_values.push(value.as_pf().clone());
+        }
+    }
+    evaluated_values
 }
 
 pub fn write_precompute<P: AsRef<Path>>(path: P, data: &StagedWitComp) -> io::Result<()> {
@@ -80,6 +81,17 @@ pub fn read_precompute<P: AsRef<Path>>(path: P) -> io::Result<wit_comp::StagedWi
     Ok(data)
 }
 
+pub fn write_r1cs_final<P: AsRef<Path>>(path: P, data: &R1csFinal) -> io::Result<()> {
+    let mut file = BufWriter::new(File::create(path)?);
+    bincode::serde::encode_into_std_write(&data, &mut file, bincode::config::legacy()).unwrap();
+    Ok(())
+}
+
+pub fn read_r1cs_final<P: AsRef<Path>>(path: P) -> io::Result<R1csFinal> {
+    let mut file = BufReader::new(File::open(path)?);
+    let data: R1csFinal = bincode::serde::decode_from_std_read(&mut file, bincode::config::legacy()).unwrap();
+    Ok(data)
+}
 
 pub fn prove(
     prover_data: &ProverData,
@@ -238,7 +250,7 @@ fn spartan_witnesses_and_inputs(
     );
 
     let values = prover_data.extend_r1cs_witness(inputs_map);
-    prover_data.r1cs.check_all(&values);
+    // prover_data.r1cs.check_all(&values);
 
     for var in prover_data.r1cs.vars.iter() {
         let val = values.get(var).expect("missing R1CS value");

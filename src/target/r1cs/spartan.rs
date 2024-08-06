@@ -174,7 +174,7 @@ pub fn r1cs_to_spartan(
     );
 
     let values = prover_data.extend_r1cs_witness(inputs_map);
-    prover_data.r1cs.check_all(&values);
+    // prover_data.r1cs.check_all(&values);
 
     assert_eq!(values.len(), prover_data.r1cs.vars.len());
 

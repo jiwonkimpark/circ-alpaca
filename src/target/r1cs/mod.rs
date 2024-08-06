@@ -569,47 +569,6 @@ impl R1csFinal {
             .par_iter()
             .for_each(|(a, b, c)| self.check(a, b, c, values));
     }
-
-    fn extend_r1cs_witness(&self, precompute: &StagedWitComp, values: &HashMap<String, Value>) -> HashMap<Var, FieldV> {
-        // we need to evaluate all R1CS variables
-        let mut var_values: HashMap<Var, FieldV> = Default::default();
-        let mut eval = wit_comp::StagedWitCompEvaluator::new(precompute);
-        // this will hold inputs to the multi-round evaluator.
-        let mut inputs = values.clone();
-        while var_values.len() < self.vars.len() {
-            trace!(
-                "Have {}/{} values, doing another round",
-                var_values.len(),
-                self.vars.len()
-            );
-            // do a round of evaluation
-            let value_vec = eval.eval_stage(std::mem::take(&mut inputs));
-            for value in value_vec {
-                trace!(
-                    "var {} : {}",
-                    self.names
-                        .get(&self.vars[var_values.len()])
-                        .unwrap(),
-                    value.as_pf()
-                );
-                var_values.insert(self.vars[var_values.len()], value.as_pf().clone());
-            }
-            // fill the challenges with 1s
-            if var_values.len() < self.vars.len() {
-                for next_var_i in var_values.len()..self.vars.len() {
-                    if !matches!(self.vars[next_var_i].ty(), VarType::Chall) {
-                        break;
-                    }
-                    let var = self.vars[next_var_i];
-                    let name = self.names.get(&var).unwrap().clone();
-                    let val = pf_challenge(&name, &self.field);
-                    var_values.insert(var, val.clone());
-                    inputs.insert(name, Value::Field(val));
-                }
-            }
-        }
-        var_values
-    }
 }
 
 impl ProverData {
@@ -621,37 +580,33 @@ impl ProverData {
         // this will hold inputs to the multi-round evaluator.
         let mut inputs = values.clone();
         while var_values.len() < self.r1cs.vars.len() {
-            trace!(
-                "Have {}/{} values, doing another round",
-                var_values.len(),
-                self.r1cs.vars.len()
-            );
             // do a round of evaluation
             let value_vec = eval.eval_stage(std::mem::take(&mut inputs));
             for value in value_vec {
-                trace!(
-                    "var {} : {}",
-                    self.r1cs
-                        .names
-                        .get(&self.r1cs.vars[var_values.len()])
-                        .unwrap(),
-                    value.as_pf()
-                );
+                // trace!(
+                //     "var {} : {}",
+                //     self.r1cs
+                //         .names
+                //         .get(&self.r1cs.vars[var_values.len()])
+                //         .unwrap(),
+                //     value.as_pf()
+                // );
                 var_values.insert(self.r1cs.vars[var_values.len()], value.as_pf().clone());
             }
             // fill the challenges with 1s
-            if var_values.len() < self.r1cs.vars.len() {
-                for next_var_i in var_values.len()..self.r1cs.vars.len() {
-                    if !matches!(self.r1cs.vars[next_var_i].ty(), VarType::Chall) {
-                        break;
-                    }
-                    let var = self.r1cs.vars[next_var_i];
-                    let name = self.r1cs.names.get(&var).unwrap().clone();
-                    let val = eval_pf_challenge(&name, &self.r1cs.field);
-                    var_values.insert(var, val.clone());
-                    inputs.insert(name, Value::Field(val));
-                }
-            }
+            // if var_values.len() < self.r1cs.vars.len() {
+            //     for next_var_i in var_values.len()..self.r1cs.vars.len() {
+            //         if !matches!(self.r1cs.vars[next_var_i].ty(), VarType::Chall) {
+            //             break;
+            //         }
+            //         println!("VarType::Chall");
+            //         let var = self.r1cs.vars[next_var_i];
+            //         let name = self.r1cs.names.get(&var).unwrap().clone();
+            //         let val = pf_challenge(&name, &self.r1cs.field);
+            //         var_values.insert(var, val.clone());
+            //         inputs.insert(name, Value::Field(val));
+            //     }
+            // }
         }
         eval.print_times();
         var_values
