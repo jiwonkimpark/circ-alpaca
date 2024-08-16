@@ -30,25 +30,15 @@ pub fn r1cs_values(
     vars_size: usize,
     inputs_map: &FxHashMap<String, Value>,
 ) -> io::Result<Vec<FieldV>> {
-    println!("========== CIRC - R1CS - SPARTAN - GET CIRCUIT VALUES ==========");
-    let total_timer = Instant::now();
-
-    let mut timer = Instant::now();
     let precompute: StagedWitComp = read_precompute::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE").expect("failed to read precompute data");
-    let mut elapsed = timer.elapsed();
-    println!("read prover precompute: {:.2?}", elapsed);
 
     // add r1cs witness to values
-    timer = Instant::now();
+    let timer = Instant::now();
     let values = extend_r1cs_witness(vars_size, &precompute, inputs_map);
     // r1cs.check_all(&values);
     assert_eq!(values.len(), vars_size);
-    elapsed = timer.elapsed();
+    let elapsed = timer.elapsed();
     println!("generate r1cs witness values time: {:.2?}", elapsed);
-
-    let total_elapsed = total_timer.elapsed();
-    println!("total circ r1cs values time: {:.?}", total_elapsed);
-    println!("==============================");
 
     Ok(values)
 }

@@ -456,10 +456,6 @@ impl<'a> StagedWitCompEvaluator<'a> {
 
     /// Evaluate one stage.
     pub fn eval_stage(&mut self, inputs: HashMap<String, Value>) -> Vec<&Value> {
-        let eval_operations = Self::read_eval_operations().unwrap();
-
-        println!("========== EVAL_STAGE ==========");
-        let total_timer = Instant::now();
         trace!(
             "Beginning stage {}/{}",
             self.stages_evaluated,
@@ -503,9 +499,6 @@ impl<'a> StagedWitCompEvaluator<'a> {
         }
 
         // Self::write_eval_operations(&eval_step_operations).expect("write eval operations failed");
-
-        // println!("eval_steps.size: {}", eval_step_operations.len());
-        println!("eval_stage elapsed: {:.2?}", total_timer.elapsed());
         out
     }
 
