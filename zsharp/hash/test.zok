@@ -1,0 +1,22 @@
+from "sponge" import Sponge, start, AbsorbResult, absorb, squeeze, PermuteResult
+from "../curves/point" import Point
+import "poseidon"
+
+def main() -> bool:
+    // test a single message hash
+    field msg = 20083237669486127692456725636967615521778148027314834586792436427077693145141
+    field[1] hash_msg_2 = [0; 1]
+    hash_msg_2[0] = msg
+
+    Sponge sponge = Sponge {rate: 8, absorb_pos: 0, squeeze_pos: 0}
+    field[9] init = start(1, 0)
+    AbsorbResult absorbed2 = absorb(sponge, init, hash_msg_2)
+    field[9] absorbed_state = absorbed2.state
+    field[9] squeezed_state = squeeze(absorbed2.sponge, absorbed_state, 1)
+
+    field digest = poseidon(hash_msg_2, 0)
+
+    assert(squeezed_state[0] == digest)
+
+    return true
+

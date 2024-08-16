@@ -1,0 +1,62 @@
+from "schnorr" import SchnorrSignature, get_sG, get_ex_plus_r_G, verify, verify_with_field, generate_e, unpack_to_le_bits
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+
+import "../../third_party/ZoKrates/zokrates_stdlib/stdlib/utils/pack/bool/unpack256"
+
+
+// values for test:
+// Generator G = (g_x, g_y). g_x and g_y are vesta base field (Fq)
+// g_x: 0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000000 // 28948022309329048855892746252171976963363056481941647379679742748393362948096
+// g_y: 0x0000000000000000000000000000000000000000000000000000000000000002 // 2
+
+// public key pk = (pk_x, pk_y). pk_x and pk_y are vesta base field (Fq)
+// pk_id.x: 0x024e901a6a50df1906f8940c07127d0fbe843cc197a067617348a6dfebe99fce // 1043434331848169453851998485704734042205419418349425591986919859043586121678
+// pk_id.y: 0x22da1f00517cf3c3adfb61bb96579ad1a97efad987c1cc5ec1ac793210ad8859 // 15764023474671193476695298871019800158159503420857207971689576706185200765017
+
+// commitment to k com_k is pallas scalar field (Fq)
+// com_k: 0x0bf988f702bf7a77d29268dd4ac7b9808139598463d73ec39b29dd5016113d4a // 5416331550445132497584843592622565542831894572011139641649607101405071490378
+
+// start block values (t_start.nonce, t_start.tag, t_start.h) are pallas scalar field (Fq)
+// t_start.nonce: 0x0000000000000000000000000000000000000000000000000000000000000000 // 0
+// t_start.tag: 0x251bdf07bf4f99f0caf22a5d7acc4ea5a78bdb6d39bee85249e11e9a85c32dbf // 16784819566632227509193744503554280827412335515172529361503197782399477034431
+// t_start.h: 0x169754b978df0eb8c9d9aee632374e3eb124a08f31e04104d0d5e3a05d6a9c49 // 10218261322625895944572930125058626068610163601073462094022134460253093928009
+
+// e during signature is vesta scalar field (Fp)
+// e: 0x12fcb6e97cda1b934f0c399df6a4d218f8dbe7260c03afd2856768934add286f // 8588139147474085647757703403416696132198608784949396397966180649684566878319
+// e in le_bits form: [true, true, true, true, false, true, true, false, false, false, false, true, false, true, false, false, true, false, true, true, true, false, true, true, false, true, false, true, false, false, true, false, true, true, false, false, true, false, false, true, false, false, false, true, false, true, true, false, true, true, true, false, false, true, true, false, true, false, true, false, false, false, false, true, false, true, false, false, true, false, true, true, true, true, true, true, false, true, false, true, true, true, false, false, false, false, false, false, false, false, true, true, false, false, false, false, false, true, true, false, false, true, false, false, true, true, true, false, false, true, true, true, true, true, false, true, true, false, true, true, false, false, false, true, true, true, true, true, false, false, false, true, true, false, false, false, false, true, false, false, true, false, true, true, false, false, true, false, false, true, false, true, false, true, true, false, true, true, true, true, true, false, true, true, true, false, false, true, true, false, false, true, true, true, false, false, false, false, true, true, false, false, false, false, true, true, true, true, false, false, true, false, true, true, false, false, true, false, false, true, true, true, false, true, true, false, false, false, false, true, false, true, true, false, true, true, false, false, true, true, true, true, true, false, true, false, false, true, false, true, true, true, false, true, true, false, true, true, false, true, false, false, true, true, true, true, true, true, false, true, false, false, true, false, false, false, ]
+
+// signature_R = (R_x, R_y). R_x and R_y are vesta base field (Fq)
+// signature.R.x: 0x111764d0840b5f50b089de2f8a15a4156523502bd0be3a717835230e2099fce0 // 7730651704614918069031985293514338000764123301041154376355901360523133451488
+// signature.R.y: 0x09180f19115534e418d7645abfc7ac3acf9b678f0f1e5a7caee149e471adf855 // 4113324168823308179267876651255587360946607187085007384794119777730769582165
+
+// signature_s is vesta scalar field (Fp)
+// signature.s: 0x0839667774a319ed574d9c263ef4fb27edefbee1934b1953d35c222525867caa // 3719920270002846849733653064214732606247931240936760284211304969336821021866
+// s in le_bits form: [false, true, false, true, false, true, false, true, false, false, true, true, true, true, true, false, false, true, true, false, false, false, false, true, true, false, true, false, false, true, false, false, true, false, true, false, false, true, false, false, false, true, false, false, false, true, false, false, false, false, true, true, true, false, true, false, true, true, false, false, true, false, true, true, true, true, false, false, true, false, true, false, true, false, false, true, true, false, false, false, true, true, false, true, false, false, true, false, true, true, false, false, true, false, false, true, true, false, false, false, false, true, true, true, false, true, true, true, true, true, false, true, true, true, true, true, false, true, true, true, true, false, true, true, false, true, true, true, true, true, true, false, false, true, false, false, true, true, false, true, true, true, true, true, false, false, true, false, true, true, true, true, false, true, true, true, true, true, false, false, false, true, true, false, false, true, false, false, false, false, true, true, true, false, false, true, true, false, true, true, false, false, true, false, true, true, true, false, true, false, true, false, true, false, true, true, false, true, true, true, true, false, false, true, true, false, false, false, true, true, false, false, false, true, false, true, false, false, true, false, true, true, true, false, true, true, true, false, true, true, true, false, false, true, true, false, false, true, true, false, true, false, false, true, true, true, false, false, false, false, false, true, false, false, false, false, ]
+
+def main() -> field:
+    Point pk = Point {x: 22050626165244989704279360923693429444721272069930454072480348511825682425409, y: 8269332246679691626800088012288573537589763643430667138562379498707187805585 }
+    Point G = Point {x: 28948022309329048855892746252171976963363056481941647379679742748393362948096, y: 2 }
+
+    Point sign_R = Point {x: 104476197385183429650980097564925907671751505627376022478961498476649653753, y: 19892780398687308202875496938793016706304509028453819561838437009499033877502 }
+    field s_field = 8596171361688068822359134169153583845454862639665058759492886950380561862590
+    // bool[256] s = unpack_to_le_bits(s_field)
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: s_field }
+
+    field e_extracted = 18419634025225268358623092577038283654991312086555718043395112577775908935880
+    bool[256] e_extracted_le_bits = unpack_to_le_bits(e_extracted)
+
+    field[4] sign_messages = [0; 4]
+    sign_messages[0] = 17924200985448135139296287043146923407134803314434016501452159884132904908499
+    sign_messages[1] = 0
+    sign_messages[2] = 13013565031525490894216974819458734205139877622289681418544210304549131055503
+    sign_messages[3] = 5832718907846145985696349048365707930708318227345598990668672118136356033256
+    field e = generate_e(pk, sign_messages, sign)
+    bool[256] e_le_bits = unpack_to_le_bits(e)
+
+    assert(e_extracted_le_bits == e_le_bits)
+
+    field verify_result = verify(pk, sign_messages, sign, VESTA_PARAMS)
+
+
+    return verify_result

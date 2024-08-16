@@ -22,6 +22,9 @@ pub mod proof;
 pub mod spartan;
 pub mod trans;
 pub mod wit_comp;
+#[cfg(feature = "spartan")]
+pub mod spartan_opt;
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A Rank 1 Constraint System.
@@ -144,9 +147,9 @@ pub struct R1cs {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct R1csFinal {
     field: FieldT,
-    vars: Vec<Var>,
-    constraints: Vec<(Lc, Lc, Lc)>,
-    names: HashMap<Var, String>,
+    pub vars: Vec<Var>,
+    pub constraints: Vec<(Lc, Lc, Lc)>,
+    pub names: HashMap<Var, String>,
 
     commitments: Vec<Vec<Var>>,
 }
@@ -170,7 +173,7 @@ impl Var {
         };
         Var(ty_repr << Self::NUMBER_BITS | number)
     }
-    fn ty(&self) -> VarType {
+    pub fn ty(&self) -> VarType {
         match self.0 >> Self::NUMBER_BITS {
             0b000 => VarType::Inst,
             0b001 => VarType::CWit,
@@ -577,37 +580,33 @@ impl ProverData {
         // this will hold inputs to the multi-round evaluator.
         let mut inputs = values.clone();
         while var_values.len() < self.r1cs.vars.len() {
-            trace!(
-                "Have {}/{} values, doing another round",
-                var_values.len(),
-                self.r1cs.vars.len()
-            );
             // do a round of evaluation
             let value_vec = eval.eval_stage(std::mem::take(&mut inputs));
             for value in value_vec {
-                trace!(
-                    "var {} : {}",
-                    self.r1cs
-                        .names
-                        .get(&self.r1cs.vars[var_values.len()])
-                        .unwrap(),
-                    value.as_pf()
-                );
+                // trace!(
+                //     "var {} : {}",
+                //     self.r1cs
+                //         .names
+                //         .get(&self.r1cs.vars[var_values.len()])
+                //         .unwrap(),
+                //     value.as_pf()
+                // );
                 var_values.insert(self.r1cs.vars[var_values.len()], value.as_pf().clone());
             }
             // fill the challenges with 1s
-            if var_values.len() < self.r1cs.vars.len() {
-                for next_var_i in var_values.len()..self.r1cs.vars.len() {
-                    if !matches!(self.r1cs.vars[next_var_i].ty(), VarType::Chall) {
-                        break;
-                    }
-                    let var = self.r1cs.vars[next_var_i];
-                    let name = self.r1cs.names.get(&var).unwrap().clone();
-                    let val = eval_pf_challenge(&name, &self.r1cs.field);
-                    var_values.insert(var, val.clone());
-                    inputs.insert(name, Value::Field(val));
-                }
-            }
+            // if var_values.len() < self.r1cs.vars.len() {
+            //     for next_var_i in var_values.len()..self.r1cs.vars.len() {
+            //         if !matches!(self.r1cs.vars[next_var_i].ty(), VarType::Chall) {
+            //             break;
+            //         }
+            //         println!("VarType::Chall");
+            //         let var = self.r1cs.vars[next_var_i];
+            //         let name = self.r1cs.names.get(&var).unwrap().clone();
+            //         let val = pf_challenge(&name, &self.r1cs.field);
+            //         var_values.insert(var, val.clone());
+            //         inputs.insert(name, Value::Field(val));
+            //     }
+            // }
         }
         eval.print_times();
         var_values
@@ -696,9 +695,9 @@ pub enum SigTy {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 /// A linear combination
 pub struct Lc {
-    modulus: FieldT,
-    constant: FieldV,
-    monomials: HashMap<Var, FieldV>,
+    pub modulus: FieldT,
+    pub constant: FieldV,
+    pub monomials: HashMap<Var, FieldV>,
 }
 
 impl Lc {
@@ -802,6 +801,7 @@ macro_rules! arith_impl {
 }
 
 use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use crate::target::r1cs::wit_comp::StagedWitComp;
 
 impl Neg for Lc {
     type Output = Lc;

@@ -56,6 +56,8 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::time::Instant;
+use circ::target::r1cs::spartan_opt::write_preprocessed_spartan;
 
 #[derive(Debug, Parser)]
 #[command(name = "circ", about = "CirC: the circuit compiler")]
@@ -97,6 +99,10 @@ enum Backend {
         prover_key: PathBuf,
         #[arg(long, default_value = "V")]
         verifier_key: PathBuf,
+        #[arg(long, default_value = "GENS")]
+        gens: PathBuf,
+        #[arg(long, default_value = "INSTANCE")]
+        instance: PathBuf,
         #[arg(long, default_value = "50")]
         /// linear combination constraints up to this size will be eliminated
         lc_elimination_thresh: usize,
@@ -298,6 +304,7 @@ fn main() {
         }
     };
     println!("Running backend");
+
     match options.backend {
         #[cfg(feature = "r1cs")]
         Backend::R1cs {
@@ -305,6 +312,8 @@ fn main() {
             prover_key,
             verifier_key,
             proof_impl,
+            gens,
+            instance,
             ..
         } => {
             let cs = cs.get("main");
@@ -322,10 +331,6 @@ fn main() {
                 println!("R1CS stats: {:#?}", r1cs.stats());
             }
             let (prover_data, verifier_data) = r1cs.finalize(cs);
-            println!(
-                "Final R1cs rounds: {}",
-                prover_data.precompute.stage_sizes().count() - 1
-            );
             match action {
                 ProofAction::Count => (),
                 #[cfg(feature = "bellman")]
@@ -370,6 +375,7 @@ fn main() {
                 ProofAction::SpartanSetup => {
                     write_data::<_, _>(prover_key, verifier_key, &prover_data, &verifier_data)
                         .unwrap();
+                    write_preprocessed_spartan::<_, _>(gens, instance, &prover_data).unwrap();
                 }
                 #[cfg(not(feature = "spartan"))]
                 ProofAction::SpartanSetup => panic!("Missing feature: spartan"),

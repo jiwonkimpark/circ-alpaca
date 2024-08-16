@@ -1,0 +1,5 @@
+from "../../point" import Point
+
+def point_negate(Point pt) -> Point:
+    field minus_y = 0f - pt.y
+    return Point {x: pt.x, y: minus_y}

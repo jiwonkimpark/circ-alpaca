@@ -1,0 +1,19 @@
+from "../../point" import Point
+from "double" import x_star
+
+def point_addition(Point pt1, Point pt2) -> Point:
+    field y_delta = pt2.y - pt1.y
+    field x_delta = pt2.x - pt1.x
+    field mu = y_delta / x_delta
+    field mu_squared = mu * mu
+    field mu_squared_minus_x1 = mu_squared - pt1.x
+    field x3 = mu_squared_minus_x1 - pt2.x
+
+    field x_star = x_star(pt1.x, pt2.x)
+    field x_star_times_y_delta = (x_star * y_delta)
+    field gamma = (x_star_times_y_delta / x_delta)
+    field mu_cube = mu_squared * mu
+    field gamma_minus_mu_cube = gamma - mu_cube
+    field y3 = gamma_minus_mu_cube - pt1.y
+
+    return Point{x: x3, y: y3}
