@@ -4,16 +4,22 @@ set -ex
 
 disable -r time
 
+#cargo build --release --features r1cs,zok,spartan --example zk
+#cargo build --release --features r1cs,zok,spartan --example circ
+
 MODE=release # debug or release
-BIN=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/target/$MODE/examples/circ
-ZK_BIN=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/target/$MODE/examples/zk
+#BIN=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/target/$MODE/examples/circ
+#ZK_BIN=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/target/$MODE/examples/zk
+DIR=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon
+BIN=$DIR/target/$MODE/examples/circ
+ZK_BIN=$DIR/target/$MODE/examples/zk
 
 modulus=28948022309329048855892746252171976963363056481941647379679742748393362948097
 
 function spartan_r1cs {
     ex_name=$1
 #    $BIN --field-custom-modulus $modulus ./circ-mastadon/zsharp/function_f/$ex_name.zok r1cs --action spartan-setup
-    $ZK_BIN --field-custom-modulus $modulus --pin /Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/zsharp/function_f/$ex_name.zok.pin --action spartan-r1cs --prover-key IVC_P --verifier-key IVC_V
+    $ZK_BIN --field-custom-modulus $modulus --pin $DIR/zsharp/function_f/$ex_name.zok.pin --action spartan-r1cs --prover-key IVC_P --verifier-key IVC_V
 #      rm -rf P V pi
 }
 
