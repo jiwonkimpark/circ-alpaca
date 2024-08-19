@@ -8,13 +8,14 @@ use circ_fields::FieldV;
 use fxhash::FxHashMap;
 use libspartan::{Assignment, InputsAssignment, Instance, NIZK, NIZKGens, VarsAssignment};
 use libspartan::scalar::pasta::fq::Bytes;
-use merlin::Transcript;
 use rug::Integer;
 use serde::{Deserialize, Serialize};
 use crate::ir::term::Value;
 use crate::target::r1cs::{ProverData, R1csFinal, spartan, Var, VarType, VerifierData, wit_comp};
 use crate::target::r1cs::spartan::{int_to_scalar};
 use crate::target::r1cs::wit_comp::StagedWitComp;
+use libspartan::transcript::Keccak256Transcript;
+use merlin::Transcript;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SpartanInstance {
@@ -95,7 +96,7 @@ pub fn prove(
     println!("spartan::r1cs_to_spartan: {:.2?}", elapsed);
 
     now = Instant::now();
-    let mut prover_transcript = Transcript::new(b"nizk_example");
+    let mut prover_transcript = Keccak256Transcript::new(b"nizk_example");
     let pf = NIZK::prove(inst, witnesses, &inputs, gens, &mut prover_transcript);
     elapsed = now.elapsed();
     println!("NIZK::prove: {:.2?}", elapsed);
@@ -120,7 +121,7 @@ pub fn verify(
     let inputs = InputsAssignment::new(&inp).unwrap();
 
     println!("Verifying with Spartan");
-    let mut verifier_transcript = Transcript::new(b"nizk_example");
+    let mut verifier_transcript = Keccak256Transcript::new(b"nizk_example");
     assert!(proof
         .verify(inst, &inputs, &mut verifier_transcript, gens)
         .is_ok());
