@@ -41,7 +41,7 @@ pub fn r1cs_values(
     // r1cs.check_all(&values);
     assert_eq!(values.len(), vars_size);
     let elapsed = timer.elapsed();
-    println!("generate r1cs witness values time: {:.2?}", elapsed);
+    // println!("generate r1cs witness values time: {:.2?}", elapsed);
 
     Ok(values)
 }
