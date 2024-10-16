@@ -40,18 +40,21 @@ impl ZStdLib {
         let p = std::env::current_dir().unwrap().canonicalize().unwrap();
         assert!(p.is_absolute());
         let stdlib_subdirs = vec![
-            "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/ZoKrates/zokrates_stdlib/stdlib",
-            "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/third_party/ZoKrates/zokrates_stdlib/stdlib",
+            // "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/ZoKrates/zokrates_stdlib/stdlib",
+            // "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/third_party/ZoKrates/zokrates_stdlib/stdlib",
+            "/home/jiwonkp/mastodon/Mastadon/circ-mastadon/ZoKrates/zokrates_stdlib/stdlib",
+            "/home/jiwonkp/mastodon/Mastadon/circ-mastadon/third_party/ZoKrates/zokrates_stdlib/stdlib"
         ];
-        for a in p.ancestors() {
+        // for a in p.ancestors() {
             for subdir in &stdlib_subdirs {
-                let mut q = a.to_path_buf();
-                q.push(subdir);
+                // let mut q = a.to_path_buf();
+                // q.push(subdir);
+                let q = PathBuf::from(subdir.to_string());
                 if q.exists() {
                     return Self { path: q };
                 }
             }
-        }
+        // }
         panic!("Could not find ZoKrates/Z# stdlib from {}", p.display())
     }
     /// Turn `child`, relative to `parent` (or to the standard libary!), into an absolute path.

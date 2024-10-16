@@ -4,8 +4,12 @@ set -ex
 
 disable -r time
 
+#cargo build --release --features r1cs,zok,spartan --example circ
+#cargo build --release --features r1cs,zok,spartan --example zk
+
 MODE=release # debug or release
-DIR=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon
+#DIR=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon
+DIR=/home/jiwonkp/mastodon/Mastadon/circ-mastadon
 BIN=$DIR/target/$MODE/examples/circ
 ZK_BIN=$DIR/target/$MODE/examples/zk
 

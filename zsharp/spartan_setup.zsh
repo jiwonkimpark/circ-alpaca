@@ -8,7 +8,8 @@ set -ex
 disable -r time
 
 MODE=release # debug or release
-DIR=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon
+#DIR=/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon
+DIR=/home/jiwonkp/mastodon/Mastadon/circ-mastadon
 BIN=$DIR/target/$MODE/examples/circ
 ZK_BIN=$DIR/target/$MODE/examples/zk
 

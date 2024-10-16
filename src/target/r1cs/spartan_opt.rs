@@ -27,7 +27,8 @@ pub struct SpartanInstance {
     m_c: Vec<(usize, usize, [u8; 32])>,
 }
 
-const PRECOMPUTE_PATH: &str = "/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE";
+// const PRECOMPUTE_PATH: &str = "/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE";
+const PRECOMPUTE_PATH: &str = "/home/jiwonkp/mastodon/Mastadon/IVC_PRECOMPUTE";
 
 pub fn r1cs_values(
     vars_size: usize,
