@@ -50,7 +50,7 @@ def generate_commitment(field r,  field k) -> field:
     return com_output
 
 
-def main(field tag, field nonce, field message_hash, field pk_id_x, field pk_id_y, field com_k_prime, private field k, private field r_prime, private field sign_start_R_x, private field sign_start_R_y, private field sign_start_s, field com_k, private field t_start_nonce, private field t_start_tag, private field t_start_h, private field r_com) -> field:
+def main(field tag, field nonce, field message_hash, field pk_id_x, field pk_id_y, field com_k_prime, private field k, private field r_prime, private field sign_start_R_x, private field sign_start_R_y, private field sign_start_s, private field com_k, private field t_start_nonce, private field t_start_tag, private field t_start_h, private field r_com) -> field:
     field tag_output = generate_tag(nonce, message_hash, k)
     field verify_sign_start = verify_sign_start(pk_id_x, pk_id_y, sign_start_R_x, sign_start_R_y, sign_start_s, com_k, t_start_nonce, t_start_tag, t_start_h)
     field com_k_prime_output = generate_commitment(r_prime, k)

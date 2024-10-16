@@ -6,8 +6,7 @@
     (pk_id_x $03)
     (pk_id_y $04)
     (com_k_prime $05)
-    (com_k $06)
-    (return $07)
+    (return $06)
 ) true ;ignored
 )
 )
