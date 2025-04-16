@@ -8,13 +8,14 @@ use circ_fields::FieldV;
 use fxhash::FxHashMap;
 use libspartan::{Assignment, InputsAssignment, Instance, NIZK, NIZKGens, VarsAssignment};
 use libspartan::scalar::pasta::fq::Bytes;
-use merlin::Transcript;
 use rug::Integer;
 use serde::{Deserialize, Serialize};
 use crate::ir::term::Value;
 use crate::target::r1cs::{ProverData, R1csFinal, spartan, Var, VarType, VerifierData, wit_comp};
 use crate::target::r1cs::spartan::{int_to_scalar};
 use crate::target::r1cs::wit_comp::StagedWitComp;
+use libspartan::transcript::Keccak256Transcript;
+use merlin::Transcript;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SpartanInstance {
@@ -26,11 +27,13 @@ pub struct SpartanInstance {
     m_c: Vec<(usize, usize, [u8; 32])>,
 }
 
+const PRECOMPUTE_PATH: &str = "/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE";
+
 pub fn r1cs_values(
     vars_size: usize,
     inputs_map: &FxHashMap<String, Value>,
 ) -> io::Result<Vec<FieldV>> {
-    let precompute: StagedWitComp = read_precompute::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE").expect("failed to read precompute data");
+    let precompute: StagedWitComp = read_precompute::<_>(PRECOMPUTE_PATH).expect("failed to read precompute data");
 
     // add r1cs witness to values
     let timer = Instant::now();
@@ -38,7 +41,7 @@ pub fn r1cs_values(
     // r1cs.check_all(&values);
     assert_eq!(values.len(), vars_size);
     let elapsed = timer.elapsed();
-    println!("generate r1cs witness values time: {:.2?}", elapsed);
+    // println!("generate r1cs witness values time: {:.2?}", elapsed);
 
     Ok(values)
 }
@@ -95,7 +98,7 @@ pub fn prove(
     println!("spartan::r1cs_to_spartan: {:.2?}", elapsed);
 
     now = Instant::now();
-    let mut prover_transcript = Transcript::new(b"nizk_example");
+    let mut prover_transcript = Keccak256Transcript::new(b"nizk_example");
     let pf = NIZK::prove(inst, witnesses, &inputs, gens, &mut prover_transcript);
     elapsed = now.elapsed();
     println!("NIZK::prove: {:.2?}", elapsed);
@@ -120,7 +123,7 @@ pub fn verify(
     let inputs = InputsAssignment::new(&inp).unwrap();
 
     println!("Verifying with Spartan");
-    let mut verifier_transcript = Transcript::new(b"nizk_example");
+    let mut verifier_transcript = Keccak256Transcript::new(b"nizk_example");
     assert!(proof
         .verify(inst, &inputs, &mut verifier_transcript, gens)
         .is_ok());

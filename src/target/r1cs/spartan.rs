@@ -12,6 +12,7 @@ use std::io;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path};
 use std::time::Instant;
+use libspartan::transcript::Keccak256Transcript;
 
 /// Hold Spartan variables
 #[derive(Debug)]
@@ -96,7 +97,7 @@ pub fn prove<P: AsRef<Path>>(
     now = Instant::now();
     // produce proof
     println!("Producing proof");
-    let mut prover_transcript = Transcript::new(b"nizk_example");
+    let mut prover_transcript = Keccak256Transcript::new(b"nizk_example");
     let pf = NIZK::prove(&inst, wit, &inps, &gens, &mut prover_transcript);
     println!("Proof produced");
     elapsed = now.elapsed();
@@ -125,7 +126,7 @@ pub fn verify<P: AsRef<Path>>(
     let inputs = InputsAssignment::new(&inp).unwrap();
 
     println!("Verifying with Spartan");
-    let mut verifier_transcript = Transcript::new(b"nizk_example");
+    let mut verifier_transcript = Keccak256Transcript::new(b"nizk_example");
     assert!(proof
         .verify(inst, &inputs, &mut verifier_transcript, gens)
         .is_ok());
