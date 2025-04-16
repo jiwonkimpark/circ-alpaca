@@ -12,8 +12,8 @@ ZK_BIN=$DIR/target/$MODE/examples/zk
 modulus=28948022309329048855892746252171976963363056481941647379679742748393362948097
 
 function spartan_r1cs {
-    $BIN --field-custom-modulus $modulus $DIR/zsharp/relations/function_f.zok r1cs --action spartan-setup --prover-key IVC_P --verifier-key IVC_V
-    $BIN --field-custom-modulus $modulus $DIR/zsharp/relations/relation_post.zok r1cs --action spartan-setup
+    $BIN --field-custom-modulus $modulus $DIR/alpaca/relations/function_f.zok r1cs --action spartan-setup --prover-key IVC_P --verifier-key IVC_V
+    $BIN --field-custom-modulus $modulus $DIR/alpaca/relations/relation_post.zok r1cs --action spartan-setup
 }
 
 spartan_r1cs

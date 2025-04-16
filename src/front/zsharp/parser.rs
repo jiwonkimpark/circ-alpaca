@@ -40,8 +40,8 @@ impl ZStdLib {
         let p = std::env::current_dir().unwrap().canonicalize().unwrap();
         assert!(p.is_absolute());
         let stdlib_subdirs = vec![
-            "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/ZoKrates/zokrates_stdlib/stdlib",
-            "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/third_party/ZoKrates/zokrates_stdlib/stdlib",
+            "ZoKrates/zokrates_stdlib/stdlib",
+            "third_party/ZoKrates/zokrates_stdlib/stdlib",
         ];
         for a in p.ancestors() {
             for subdir in &stdlib_subdirs {
