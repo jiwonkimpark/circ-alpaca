@@ -37,7 +37,7 @@ impl ZStdLib {
             }
         }
 
-        let p = std::env::current_dir().unwrap().canonicalize().unwrap();
+        let p: PathBuf = std::env::current_dir().unwrap().canonicalize().unwrap().join("circ-alpaca");
         assert!(p.is_absolute());
         let stdlib_subdirs = vec![
             "ZoKrates/zokrates_stdlib/stdlib",
