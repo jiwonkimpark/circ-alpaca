@@ -1615,6 +1615,7 @@ dependencies = [
 [[package]]
 name = "spartan"
 version = "0.8.0"
+source = "git+https://github.com/jiwonkimpark/Spartan-pasta?branch=pasta#bb0688efbcc06a9255c330e3abfe6c5f4f1bdb51"
 dependencies = [
  "bincode",
  "byteorder",
