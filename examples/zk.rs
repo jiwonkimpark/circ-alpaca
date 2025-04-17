@@ -47,9 +47,6 @@ enum ProofAction {
     Prove,
     Verify,
     Spartan,
-    SpartanProve,
-    SpartanVerify,
-    SpartanR1CS,
 }
 
 #[derive(PartialEq, Debug, Clone, ValueEnum)]
