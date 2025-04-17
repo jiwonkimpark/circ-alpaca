@@ -27,13 +27,12 @@ pub struct SpartanInstance {
     m_c: Vec<(usize, usize, [u8; 32])>,
 }
 
-const PRECOMPUTE_PATH: &str = "/Users/jiwonkim/research/tmp/Mastadon/IVC_PRECOMPUTE";
-
 pub fn r1cs_values(
+    precompute_path: &str,
     vars_size: usize,
     inputs_map: &FxHashMap<String, Value>,
 ) -> io::Result<Vec<FieldV>> {
-    let precompute: StagedWitComp = read_precompute::<_>(PRECOMPUTE_PATH).expect("failed to read precompute data");
+    let precompute: StagedWitComp = read_precompute::<_>(precompute_path).expect("failed to read precompute data");
 
     // add r1cs witness to values
     let timer = Instant::now();

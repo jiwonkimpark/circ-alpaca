@@ -1,7 +1,7 @@
 import sys
 
-pin_file_template_path = "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/zsharp/relation_r_template.zok.pin"
-vin_file_template_path = "/Users/jiwonkim/research/tmp/Mastadon/circ-mastadon/zsharp/relation_r_template.zok.vin"
+pin_file_template_path = "/circ-mastadon/alpaca/relation_r_template.zok.pin"
+vin_file_template_path = "/circ-mastadon/alpaca/relation_r_template.zok.vin"
 
 def replace_file_contents(source_path, dest_path):
     with open(source_path, 'r') as source_file:

@@ -27,47 +27,45 @@ impl Variable {
     pub fn value(&self) -> [u8; 32] { self.value }
 }
 
-const DIR: &str = "/Users/jiwonkim/research/tmp/Mastadon";
-
-pub fn r1cs_with_prover_input<P: AsRef<Path>>(
-    p_path: P,
-    inputs_map: &HashMap<String, Value>,
-) {
-    let prover_data: ProverData = read_prover_data::<_>("/Users/jiwonkim/research/tmp/Mastadon/IVC_P").expect("failed to read prover data");
-
-    // check modulus
-    let f_mod = prover_data.r1cs.field.modulus();
-    let s_mod = Integer::from_str_radix(
-        "28948022309329048855892746252171976963363056481941647379679742748393362948097",
-        10,
-    )
-        .unwrap();
-    assert_eq!(
-        &s_mod, f_mod,
-        "\nR1CS has modulus \n{s_mod},\n but Spartan CS expects \n{f_mod}",
-    );
-
-    // add r1cs witness to values
-    let values = prover_data.extend_r1cs_witness(inputs_map);
-    prover_data.r1cs.check_all(&values);
-    assert_eq!(values.len(), prover_data.r1cs.vars.len());
-
-    // write r1cs
-    // let mut file = File::create("./circ-mastadon/zsharp/r1cs.json").unwrap();
-    // file.write_all(
-    //     serde_json::to_string(&prover_data.r1cs)
-    //         .expect("failed to serialize r1cs to json")
-    //         .as_bytes()
-    // ).expect("Failed to write r1cs to the file");
-
-    // write values
-    let mut file = File::create(format!("{}/circ-mastadon/zsharp/r1cs_values.json", DIR)).unwrap();
-    file.write_all(
-        serde_json::to_string(&values)
-            .expect("failed to serialize values to json")
-            .as_bytes()
-    ).expect("Failed to write values to the file");
-}
+// pub fn r1cs_with_prover_input<P: AsRef<Path>>(
+//     p_path: P,
+//     inputs_map: &HashMap<String, Value>,
+// ) {
+//     let prover_data: ProverData = read_prover_data::<_>(P).expect("failed to read prover data");
+//
+//     // check modulus
+//     let f_mod = prover_data.r1cs.field.modulus();
+//     let s_mod = Integer::from_str_radix(
+//         "28948022309329048855892746252171976963363056481941647379679742748393362948097",
+//         10,
+//     )
+//         .unwrap();
+//     assert_eq!(
+//         &s_mod, f_mod,
+//         "\nR1CS has modulus \n{s_mod},\n but Spartan CS expects \n{f_mod}",
+//     );
+//
+//     // add r1cs witness to values
+//     let values = prover_data.extend_r1cs_witness(inputs_map);
+//     prover_data.r1cs.check_all(&values);
+//     assert_eq!(values.len(), prover_data.r1cs.vars.len());
+//
+//     // write r1cs
+//     // let mut file = File::create("./circ-mastadon/alpaca/r1cs.json").unwrap();
+//     // file.write_all(
+//     //     serde_json::to_string(&prover_data.r1cs)
+//     //         .expect("failed to serialize r1cs to json")
+//     //         .as_bytes()
+//     // ).expect("Failed to write r1cs to the file");
+//
+//     // write values
+//     let mut file = File::create(format!("{}/circ-mastadon/alpaca/r1cs_values.json", DIR)).unwrap();
+//     file.write_all(
+//         serde_json::to_string(&values)
+//             .expect("failed to serialize values to json")
+//             .as_bytes()
+//     ).expect("Failed to write values to the file");
+// }
 
 /// generate spartan proof
 pub fn prove<P: AsRef<Path>>(

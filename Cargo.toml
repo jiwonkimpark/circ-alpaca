@@ -11,7 +11,7 @@ circ_fields = { path = "circ_fields" }
 circ_opt = { path = "circ_opt" }
 circ_hc = { path = "circ_hc", default-features = false, features = ["rc", "lru"]}
 circ_waksman = { path = "circ_waksman" }
-spartan = { path = "Spartan-pasta", optional = true }
+spartan = { git = "https://github.com/jiwonkimpark/Spartan-pasta", branch = "pasta", optional = true }
 rug = { version = "1.11", features = ["serde"] }
 gmp-mpfr-sys = { version = "1.4", optional = true }
 lazy_static = { version = "1.4", optional = true }
