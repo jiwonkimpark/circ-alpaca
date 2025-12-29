@@ -1,0 +1,19 @@
+(set_default_modulus 28948022309329048855892746252171976963363056481941647379679742748393362948097
+(let (
+    (h_j $00)
+    (k $01)
+    (b_j_nonce $02)
+    (b_j_message_hash $03)
+    (b_j_tag $04)
+    (b_j_args $05)
+    (b_j_h $06)
+    (b_j_prev_nonce $07)
+    (b_j_prev_message_hash $08)
+    (b_j_prev_tag $09)
+    (b_j_prev_args $10)
+    (b_j_prev_h $11)
+    (st_update $12)
+    (st $13)
+) true ;ignored
+)
+)

@@ -1,7 +1,7 @@
 //! Fields for use in CirC
 
 #![warn(missing_docs)]
-#![deny(warnings)]
+// #![deny(warnings)]
 
 mod ff_field;
 mod int_field;

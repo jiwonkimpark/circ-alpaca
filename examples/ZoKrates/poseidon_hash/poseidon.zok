@@ -1,0 +1,9 @@
+from "sponge" import start, Sponge, AbsorbResult, absorb, squeeze, digest
+
+def main<N>(field[N] msg, u32 domain_separator) -> field:
+    field[9] init_state = start(N, domain_separator)
+    Sponge sponge = Sponge {rate: 8, absorb_pos: 0, squeeze_pos: 0}
+    AbsorbResult absorbed = absorb(sponge, init_state, msg)
+    field[9] squeezed = squeeze(absorbed.sponge, absorbed.state, 1)
+
+    return digest(squeezed)

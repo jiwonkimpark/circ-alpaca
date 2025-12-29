@@ -1,0 +1,4 @@
+struct Point {
+    field x
+    field y
+}

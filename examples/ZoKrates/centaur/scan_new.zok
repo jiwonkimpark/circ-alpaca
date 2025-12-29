@@ -1,0 +1,43 @@
+import "../poseidon_hash/poseidon"
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+
+def generate_hash(field nonce,  field message_hash,  field tag,  field args,  field h) -> field:
+    field[5] hash_inputs = [0; 5]
+    hash_inputs[0] = nonce
+    hash_inputs[1] = message_hash
+    hash_inputs[2] = tag
+    hash_inputs[3] = args
+    hash_inputs[4] = h
+
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+def generate_prf(field k,  field nonce,  field message_hash) -> field:
+    field[3] prf_inputs = [0; 3]
+    prf_inputs[0] = k
+    prf_inputs[1] = nonce
+    prf_inputs[2] = message_hash
+
+    field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
+
+    return prf_output
+
+
+def main(private field h_j, private field k, private field b_j_nonce, private field b_j_message_hash, private field b_j_tag, private field b_j_args, private field b_j_h, private field b_j_prev_nonce, private field b_j_prev_message_hash, private field b_j_prev_tag, private field b_j_prev_args, private field b_j_prev_h, private field st_update, private field st) -> field:
+  field verify_h_j = h_j - generate_hash(b_j_prev_nonce, b_j_prev_message_hash, b_j_prev_tag, b_j_prev_args, b_j_prev_h)
+
+  field verify_correct_update = if b_j_tag != generate_prf(k, b_j_nonce, b_j_message_hash) then st_update - st else st_update - st - b_j_args fi
+
+  assert(verify_h_j == 0)
+  assert(verify_correct_update == 0)
+
+  field result = verify_h_j + verify_correct_update
+  return result
+
