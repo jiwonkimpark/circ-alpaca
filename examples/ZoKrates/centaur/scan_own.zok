@@ -57,9 +57,7 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def main(private field[32] path, private field[32] path_dir, private field h_last, private field k, private field t_last, private field b_n_nonce, private field b_n_message_hash, private field b_n_tag, private field b_n_args, private field b_n_h, private field root,private field tok_j_nonce, private field tok_j_message_hash, private field tok_j_tag, private field tok_j_h, private field tok_prev_nonce, private field tok_prev_message_hash, private field tok_prev_tag, private field tok_prev_h, private field st_update, private field st, private field[5] leaf, private field flag) -> field:
-  field verify_h_last = h_last - hash_of_event(b_n_nonce, b_n_message_hash, b_n_tag, b_n_args, b_n_h)
-
+def main(private field[32] path, private field[32] path_dir, private field k, private field t_last, private field root, private field tok_j_nonce, private field tok_j_message_hash, private field tok_j_tag, private field tok_j_h, private field tok_prev_nonce, private field tok_prev_message_hash, private field tok_prev_tag, private field tok_prev_h, private field st_update, private field st, private field[5] leaf, private field flag) -> field:
   field hash_of_tok_prev = hash_of_tok(tok_prev_nonce, tok_prev_message_hash, tok_prev_tag, tok_prev_h)
   bool tok_prev_is_last = (tok_j_nonce == 0) && (tok_j_message_hash == 0) && (tok_j_tag == 0) && (tok_j_h == 0)
   bool tok_j_is_first = (tok_prev_nonce == 0) && (tok_prev_message_hash == 0) && (tok_prev_tag == 0) && (tok_prev_h == 0)
@@ -76,7 +74,6 @@ def main(private field[32] path, private field[32] path_dir, private field h_las
   field verify_path = if tok_prev_is_last then 0 else root - merkle_res fi
   field verify_st_update = if tok_prev_is_last then 0 else if flag == 0 then st_update - st - leaf[3] else st_update - st fi fi
 
-  assert(verify_h_last == 0)
   assert(verify_tok == 0)
   assert(verify_leaf)
   assert(verify_path == 0)
