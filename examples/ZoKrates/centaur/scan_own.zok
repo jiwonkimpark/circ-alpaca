@@ -6,12 +6,26 @@ const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
 
 
-def hash_of_event(field nonce,  field message_hash,  field tag,  field args,  field h) -> field:
+def hash_of_event(field idx, field nonce,  field message_hash,  field tag,  field args,  field h) -> field:
+    field[6] hash_inputs = [0; 6]
+    hash_inputs[0] = idx
+    hash_inputs[1] = nonce
+    hash_inputs[2] = message_hash
+    hash_inputs[3] = tag
+    hash_inputs[4] = args
+    hash_inputs[5] = h
+
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+def hash_of_cb(field nonce,  field message_hash,  field tag,  field f,  field h) -> field:
     field[5] hash_inputs = [0; 5]
     hash_inputs[0] = nonce
     hash_inputs[1] = message_hash
     hash_inputs[2] = tag
-    hash_inputs[3] = args
+    hash_inputs[3] = f
     hash_inputs[4] = h
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
@@ -19,19 +33,7 @@ def hash_of_event(field nonce,  field message_hash,  field tag,  field args,  fi
     return hash_output
 
 
-def hash_of_tok(field nonce,  field message_hash,  field tag, field h) -> field:
-    field[4] hash_inputs = [0; 4]
-    hash_inputs[0] = nonce
-    hash_inputs[1] = message_hash
-    hash_inputs[2] = tag
-    hash_inputs[3] = h
-
-    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
-
-    return hash_output
-
-
-def hash_of_leaf(field[5] leaf) -> field:
+def hash_of_leaf(field[7] leaf) -> field:
     field hash_output = poseidon(leaf, DOMAIN_SEPARATOR_HASH)
 
     return hash_output
@@ -57,24 +59,30 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def main(private field[32] path, private field[32] path_dir, private field k, private field t_last, private field root, private field tok_j_nonce, private field tok_j_message_hash, private field tok_j_tag, private field tok_j_h, private field tok_prev_nonce, private field tok_prev_message_hash, private field tok_prev_tag, private field tok_prev_h, private field st_update, private field st, private field[5] leaf, private field flag) -> field:
-  field hash_of_tok_prev = hash_of_tok(tok_prev_nonce, tok_prev_message_hash, tok_prev_tag, tok_prev_h)
-  bool tok_prev_is_last = (tok_j_nonce == 0) && (tok_j_message_hash == 0) && (tok_j_tag == 0) && (tok_j_h == 0)
-  bool tok_j_is_first = (tok_prev_nonce == 0) && (tok_prev_message_hash == 0) && (tok_prev_tag == 0) && (tok_prev_h == 0)
-  field verify_tok = if tok_prev_is_last then t_last - hash_of_tok_prev else if tok_j_is_first then 0 else tok_j_h - hash_of_tok_prev fi fi
+def main(private field[24] path, private field[24] path_dir, private field k, private field com_cb, private field root, private field cb_j_nonce, private field cb_j_message_hash, private field cb_j_tag, private field cb_j_f, private field cb_j_h, private field cb_prev_nonce, private field cb_prev_message_hash, private field cb_prev_tag, private field cb_prev_f, private field cb_prev_h, private field st_update, private field st, private field[7] leaf, private field flag, private field h_of_e_n, private field e_n_idx, private field e_n_nonce, private field e_n_message_hash, private field e_n_tag, private field e_n_args, private field e_n_h, private field e_prev_idx, private field lock) -> field:
+  field hash_res = hash_of_event(e_n_idx, e_n_nonce, e_n_message_hash, e_n_tag, e_n_args, e_n_h)
+  assert(h_of_e_n == hash_res)
+  
+  field hash_of_cb_prev = hash_of_cb(cb_prev_nonce, cb_prev_message_hash, cb_prev_tag, cb_prev_f, cb_prev_h)
+  bool cb_prev_is_last = (cb_j_nonce == 0) && (cb_j_message_hash == 0) && (cb_j_tag == 0) && (cb_j_f == 0) && (cb_j_h == 0)
+  bool cb_j_is_first = (cb_prev_nonce == 0) && (cb_prev_message_hash == 0) && (cb_prev_tag == 0) && (cb_prev_f == 0) && (cb_prev_h == 0)
+  field verify_lock = if cb_j_is_first then lock - 0 else lock - 1 fi
+  assert(verify_lock == 0)
+  field verify_cb = if cb_prev_is_last then com_cb - hash_of_cb_prev else if cb_j_is_first then 0 else cb_j_h - hash_of_cb_prev fi fi
 
-  bool verify_leaf = if tok_prev_is_last then true else if flag == 0 then (tok_j_nonce == leaf[0]) && (tok_j_message_hash == leaf[1]) && (tok_j_tag == leaf[2]) else (leaf[0] < tok_j_tag) && (tok_j_tag < leaf[1]) fi fi
+  bool verify_leaf = if cb_prev_is_last then true else if flag == 0 then (cb_j_nonce == leaf[1]) && (cb_j_message_hash == leaf[2]) && (cb_j_tag == leaf[3]) else (leaf[0] < cb_j_tag) && (cb_j_tag < leaf[1]) fi fi
 
   field merkle_res = hash_of_leaf(leaf)
 
-  for field i in 0..32 do
+  for field i in 0..24 do
     merkle_res = if path_dir[i] == 0 then hash_lr(path[i], merkle_res) else hash_lr(merkle_res, path[i]) fi
   endfor
 
-  field verify_path = if tok_prev_is_last then 0 else root - merkle_res fi
-  field verify_st_update = if tok_prev_is_last then 0 else if flag == 0 then st_update - st - leaf[3] else st_update - st fi fi
+  field verify_path = if cb_prev_is_last then 0 else root - merkle_res fi
 
-  assert(verify_tok == 0)
+  field verify_st_update = if cb_prev_is_last then 0 else if flag == 0 && leaf[0] > e_prev_idx && leaf[0] <= e_n_idx then st_update - st - leaf[3] else if flag == 0 && leaf[0] <= e_prev_idx then st_update - st else if flag == 1 then st_update - st else 1 fi fi fi fi
+
+  assert(verify_cb == 0)
   assert(verify_leaf)
   assert(verify_path == 0)
   assert(verify_st_update == 0)

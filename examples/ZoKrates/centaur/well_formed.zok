@@ -5,12 +5,13 @@ const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
 const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
 
-def generate_hash(field nonce,  field message_hash,  field tag,  field h) -> field:
-    field[4] hash_inputs = [0; 4]
+def generate_hash(field nonce,  field message_hash,  field tag,  field f,  field h) -> field:
+    field[5] hash_inputs = [0; 5]
     hash_inputs[0] = nonce
     hash_inputs[1] = message_hash
     hash_inputs[2] = tag
-    hash_inputs[3] = h
+    hash_inputs[3] = f
+    hash_inputs[4] = h
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
@@ -28,12 +29,13 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def hash_of_obj(field st,  field com_toks,  field com_cb,  field sn) -> field:
-    field[4] hash_inputs = [0; 4]
+def hash_of_obj(field st,  field com_cbList,  field rt_cb,  field idx,  field sn) -> field:
+    field[5] hash_inputs = [0; 5]
     hash_inputs[0] = st
-    hash_inputs[1] = com_toks
-    hash_inputs[2] = com_cb
-    hash_inputs[3] = sn
+    hash_inputs[1] = com_cbList
+    hash_inputs[2] = rt_cb
+    hash_inputs[3] = idx
+    hash_inputs[4] = sn
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
@@ -60,30 +62,67 @@ def hash_lr(field left, field right) -> field:
     return hash_output
 
 
-def main(private field[32] path, private field[32] path_dir, private field k, private field obj_st, private field obj_com_toks, private field obj_com_cb, private field obj_sn, private field gamma, private field com_obj, private field new_obj_st, private field new_obj_com_toks, private field new_obj_com_cb, private field new_obj_sn, private field new_gamma, private field com_new_obj, private field st_updated, private field new_tok_nonce, private field new_tok_message_hash, private field new_tok_tag, private field rt_bb, private field old_sn) -> field:
+def merkle_root(field nonce, field message_hash, field tag, field f, field h, field[10] path, field[10] path_dir) -> field:
+    field[5] hash_inputs = [0; 5]
+    hash_inputs[0] = nonce
+    hash_inputs[1] = message_hash
+    hash_inputs[2] = tag
+    hash_inputs[3] = f
+    hash_inputs[4] = h
+
+    bool is_empty = (nonce == 0) && (message_hash == 0) && (tag == 0) && (f == 0) && (h == 0)
+
+    field merkle_res = if is_empty then 0 else poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH) fi
+
+    for field i in 0..10 do
+      merkle_res = if path_dir[i] == 0 then hash_lr(path[i], merkle_res) else hash_lr(merkle_res, path[i]) fi
+    endfor
+
+    return merkle_res
+
+
+def hash_msg(field m) -> field:
+    field[1] hash_inputs = [0; 1]
+    hash_inputs[0] = m
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+def main(private field[16] path, private field[16] path_dir, private field k, private field obj_st, private field obj_com_cbList, private field obj_rt_cb, private field obj_idx, private field obj_sn, private field gamma, private field com_obj, private field new_obj_st, private field new_obj_com_cbList, private field new_obj_rt_cb, private field new_obj_idx, private field new_obj_sn, private field new_gamma, private field com_new_obj, private field st_updated, private field new_tok_nonce, private field new_tok_message_hash, private field new_tok_tag, private field rt_bb, private field old_sn, private field new_f, private field new_m, private field[10] path_cb, private field[10] path_dir_cb, private field e_n_idx) -> field:
   field prf_res = generate_prf(k, new_tok_nonce, new_tok_message_hash)
   field verify_prf = prf_res - new_tok_tag
   assert(verify_prf == 0)
 
+  field msg_hash_res = hash_msg(new_m)
+  assert(msg_hash_res == new_tok_message_hash)
+
   // verify new_obj well-formedness
-  field com_res = generate_hash(new_tok_nonce, new_tok_message_hash, new_tok_tag, obj_com_toks)
-  field verify_com_toks = com_res - new_obj_com_toks
-  assert(verify_com_toks == 0)
+  field com_res = generate_hash(new_tok_nonce, new_tok_message_hash, new_tok_tag, new_f, obj_com_cbList)
+  field verify_com_cbList = com_res - new_obj_com_cbList
+  assert(verify_com_cbList == 0)
 
   assert(new_obj_st == st_updated)
 
-  // TODO: cb
+  // cb
+  field non_member_res = merkle_root(0, 0, 0, 0, 0, path_cb, path_dir_cb)
+  assert(non_member_res == obj_rt_cb)
 
-  field hash_new_obj = hash_of_obj(new_obj_st, new_obj_com_toks, new_obj_com_cb, new_obj_sn)
+  field member_res = merkle_root(new_tok_nonce, new_tok_message_hash, new_tok_tag, new_f, obj_com_cbList, path_cb, path_dir_cb)
+  assert(member_res == new_obj_rt_cb)
+
+  assert(new_obj_idx == e_n_idx)
+
+  field hash_new_obj = hash_of_obj(new_obj_st, new_obj_com_cbList, new_obj_rt_cb, new_obj_idx, new_obj_sn)
   field com_new_obj_res = generate_commitment(hash_new_obj, new_gamma)
   field verify_com_new_obj = com_new_obj_res - com_new_obj
   assert(verify_com_new_obj == 0)
 
   // verify the validity of obj
-  field hash_obj = hash_of_obj(obj_st, obj_com_toks, obj_com_cb, obj_sn)
+  field hash_obj = hash_of_obj(obj_st, obj_com_cbList, obj_rt_cb, obj_idx, obj_sn)
   field merkle_res = hash_obj
 
-  for field i in 0..32 do
+  for field i in 0..16 do
     merkle_res = if path_dir[i] == 0 then hash_lr(path[i], merkle_res) else hash_lr(merkle_res, path[i]) fi
   endfor
 

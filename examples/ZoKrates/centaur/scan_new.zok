@@ -6,13 +6,14 @@ const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
 
 
-def generate_hash(field nonce,  field message_hash,  field tag,  field args,  field h) -> field:
-    field[5] hash_inputs = [0; 5]
-    hash_inputs[0] = nonce
-    hash_inputs[1] = message_hash
-    hash_inputs[2] = tag
-    hash_inputs[3] = args
-    hash_inputs[4] = h
+def generate_hash(field idx, field nonce,  field message_hash,  field tag,  field args,  field h) -> field:
+    field[6] hash_inputs = [0; 6]
+    hash_inputs[0] = idx
+    hash_inputs[1] = nonce
+    hash_inputs[2] = message_hash
+    hash_inputs[3] = tag
+    hash_inputs[4] = args
+    hash_inputs[5] = h
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
@@ -30,14 +31,52 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def main(private field h_j, private field k, private field b_j_nonce, private field b_j_message_hash, private field b_j_tag, private field b_j_args, private field b_j_h, private field b_j_prev_nonce, private field b_j_prev_message_hash, private field b_j_prev_tag, private field b_j_prev_args, private field b_j_prev_h, private field st_update, private field st) -> field:
-  field verify_h_j = h_j - generate_hash(b_j_prev_nonce, b_j_prev_message_hash, b_j_prev_tag, b_j_prev_args, b_j_prev_h)
+def hash_of_leaf(field[4] leaf) -> field:
+    field hash_output = poseidon(leaf, DOMAIN_SEPARATOR_HASH)
 
-  field verify_correct_update = if b_j_tag != generate_prf(k, b_j_nonce, b_j_message_hash) then st_update - st else st_update - st - b_j_args fi
+    return hash_output
 
-  assert(verify_h_j == 0)
+
+def hash_lr(field left, field right) -> field:
+    field[2] hash_inputs = [0; 2]
+    hash_inputs[0] = left
+    hash_inputs[1] = right
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+def merkle_root(field b_j_nonce, field b_j_msg_hash, field b_j_tag, field f, field[10] path, field[10] path_dir) -> field:
+    field[4] hash_inputs = [0; 4]
+    hash_inputs[0] = b_j_nonce
+    hash_inputs[1] = b_j_msg_hash
+    hash_inputs[2] = b_j_tag
+    hash_inputs[3] = f
+    field merkle_res = hash_of_leaf(hash_inputs)
+
+    for field i in 0..10 do
+      merkle_res = if path_dir[i] == 0 then hash_lr(path[i], merkle_res) else hash_lr(merkle_res, path[i]) fi
+    endfor
+
+    return merkle_res
+
+
+def main(private field h_j, private field k, private field b_j_idx, private field b_j_nonce, private field b_j_message_hash, private field b_j_tag, private field b_j_args, private field b_j_h, private field b_j_prev_idx, private field b_j_prev_nonce, private field b_j_prev_message_hash, private field b_j_prev_tag, private field b_j_prev_args, private field b_j_prev_h, private field st_update, private field st, private field rt, private field f, private field[10] path, private field[10] path_dir, private field lock) -> field:
+  assert(lock == 0)
+
+  field hash_res = generate_hash(b_j_prev_idx, b_j_prev_nonce, b_j_prev_message_hash, b_j_prev_tag, b_j_prev_args, b_j_prev_h)
+  assert(h_j == hash_res)
+  assert(b_j_h == hash_res)
+
+  field merkle_res = merkle_root(b_j_nonce, b_j_message_hash, b_j_tag, f, path, path_dir)
+  field tag_res = generate_prf(k, b_j_nonce, b_j_message_hash)
+  field my_token = tag_res - b_j_tag // 0 if my token
+
+  field verify_correct_update = if my_token != 0 then st_update - st else st_update - st - b_j_args fi
+  field verify_merkle_tree = if my_token == 0 then merkle_res - rt else 0 fi
+
   assert(verify_correct_update == 0)
+  assert(verify_merkle_tree == 0)
 
-  field result = verify_h_j + verify_correct_update
-  return result
+  return 0
 
