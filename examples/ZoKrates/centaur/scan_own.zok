@@ -59,7 +59,7 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def main(private field[24] path, private field[24] path_dir, private field k, private field com_cb, private field root, private field cb_j_nonce, private field cb_j_message_hash, private field cb_j_tag, private field cb_j_f, private field cb_j_h, private field cb_prev_nonce, private field cb_prev_message_hash, private field cb_prev_tag, private field cb_prev_f, private field cb_prev_h, private field st_update, private field st, private field[7] leaf, private field flag, private field h_of_e_n, private field e_n_idx, private field e_n_nonce, private field e_n_message_hash, private field e_n_tag, private field e_n_args, private field e_n_h, private field e_prev_idx, private field lock) -> field:
+def main(private field[24] path, private field[24] path_dir, private field k, private field com_cb, private field root, private field cb_j_nonce, private field cb_j_message_hash, private field cb_j_tag, private field cb_j_f, private field cb_j_h, private field cb_prev_nonce, private field cb_prev_message_hash, private field cb_prev_tag, private field cb_prev_f, private field cb_prev_h, private field st_update, private field st, private field[7] leaf, private field flag, private field h_of_e_n, private field e_n_idx, private field e_n_nonce, private field e_n_message_hash, private field e_n_tag, private field e_n_args, private field e_n_h, private field e_prev_idx, private field lock, private field pending_com_cb, private field pending_com_cb_prev) -> field:
   field hash_res = hash_of_event(e_n_idx, e_n_nonce, e_n_message_hash, e_n_tag, e_n_args, e_n_h)
   assert(h_of_e_n == hash_res)
   
@@ -81,11 +81,13 @@ def main(private field[24] path, private field[24] path_dir, private field k, pr
   field verify_path = if cb_prev_is_last then 0 else root - merkle_res fi
 
   field verify_st_update = if cb_prev_is_last then 0 else if flag == 0 && leaf[0] > e_prev_idx && leaf[0] <= e_n_idx then st_update - st - leaf[3] else if flag == 0 && leaf[0] <= e_prev_idx then st_update - st else if flag == 1 then st_update - st else 1 fi fi fi fi
+  field verify_pending_cb = if cb_prev_is_last then 0 else if flag == 0 && leaf[0] > e_prev_idx && leaf[0] <= e_n_idx then pending_com_cb - pending_com_cb_prev else if flag == 0 && leaf[0] <= e_prev_idx then pending_com_cb - pending_com_cb_prev else if flag == 1 then pending_com_cb - hash_of_cb(cb_j_nonce, cb_j_message_hash, cb_j_tag, cb_j_f, pending_com_cb_prev) else 1 fi fi fi fi
 
   assert(verify_cb == 0)
   assert(verify_leaf)
   assert(verify_path == 0)
   assert(verify_st_update == 0)
+  assert(verify_pending_cb == 0)
 
   return 0
 
