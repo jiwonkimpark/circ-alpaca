@@ -29,13 +29,12 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def hash_of_obj(field st,  field com_cbList,  field rt_cb,  field idx,  field sn) -> field:
-    field[5] hash_inputs = [0; 5]
+def hash_of_obj(field st,  field com_cbList,  field rt_cb,  field sn) -> field:
+    field[4] hash_inputs = [0; 4]
     hash_inputs[0] = st
     hash_inputs[1] = com_cbList
     hash_inputs[2] = rt_cb
-    hash_inputs[3] = idx
-    hash_inputs[4] = sn
+    hash_inputs[3] = sn
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
@@ -89,7 +88,7 @@ def hash_msg(field m) -> field:
     return hash_output
 
 
-def main(private field[16] path, private field[16] path_dir, private field k, private field obj_st, private field obj_com_cbList, private field obj_rt_cb, private field obj_idx, private field obj_sn, private field gamma, private field com_obj, private field new_obj_st, private field new_obj_com_cbList, private field new_obj_rt_cb, private field new_obj_idx, private field new_obj_sn, private field new_gamma, private field com_new_obj, private field st_updated, private field new_tok_nonce, private field new_tok_message_hash, private field new_tok_tag, private field rt_bb, private field old_sn, private field new_f, private field new_m, private field[10] path_cb, private field[10] path_dir_cb, private field e_n_idx) -> field:
+def main(private field[16] path, private field[16] path_dir, private field k, private field obj_st, private field obj_com_cbList, private field obj_rt_cb, private field obj_sn, private field gamma, private field com_obj, private field new_obj_st, private field new_obj_com_cbList, private field new_obj_rt_cb, private field new_obj_sn, private field new_gamma, private field com_new_obj, private field st_updated, private field new_tok_nonce, private field new_tok_message_hash, private field new_tok_tag, private field rt_bb, private field old_sn, private field new_f, private field new_m, private field[10] path_cb, private field[10] path_dir_cb, private field e_n_idx) -> field:
   field prf_res = generate_prf(k, new_tok_nonce, new_tok_message_hash)
   field verify_prf = prf_res - new_tok_tag
   assert(verify_prf == 0)
@@ -111,15 +110,15 @@ def main(private field[16] path, private field[16] path_dir, private field k, pr
   field member_res = merkle_root(new_tok_nonce, new_tok_message_hash, new_tok_tag, new_f, obj_com_cbList, path_cb, path_dir_cb)
   assert(member_res == new_obj_rt_cb)
 
-  assert(new_obj_idx == e_n_idx)
+  //assert(new_obj_idx == e_n_idx)
 
-  field hash_new_obj = hash_of_obj(new_obj_st, new_obj_com_cbList, new_obj_rt_cb, new_obj_idx, new_obj_sn)
+  field hash_new_obj = hash_of_obj(new_obj_st, new_obj_com_cbList, new_obj_rt_cb, new_obj_sn)
   field com_new_obj_res = generate_commitment(hash_new_obj, new_gamma)
   field verify_com_new_obj = com_new_obj_res - com_new_obj
   assert(verify_com_new_obj == 0)
 
   // verify the validity of obj
-  field hash_obj = hash_of_obj(obj_st, obj_com_cbList, obj_rt_cb, obj_idx, obj_sn)
+  field hash_obj = hash_of_obj(obj_st, obj_com_cbList, obj_rt_cb, obj_sn)
   field merkle_res = hash_obj
 
   for field i in 0..16 do
