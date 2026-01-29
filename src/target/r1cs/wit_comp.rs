@@ -24,7 +24,7 @@ use std::time::Duration;
 /// In each stage:
 /// * it takes a partial assignment
 /// * it returns a vector of field values
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct StagedWitComp {
     pub(crate) vars: HashSet<String>,
     pub stages: Vec<Stage>,
@@ -38,7 +38,7 @@ pub struct StagedWitComp {
 }
 
 /// Specifies a stage.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Stage {
     inputs: HashMap<String, Sort>,
     pub num_outputs: usize,

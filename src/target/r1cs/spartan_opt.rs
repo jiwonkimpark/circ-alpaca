@@ -40,7 +40,23 @@ pub fn r1cs_values(
     // r1cs.check_all(&values);
     assert_eq!(values.len(), vars_size);
     let elapsed = timer.elapsed();
-    // println!("generate r1cs witness values time: {:.2?}", elapsed);
+    println!("generate r1cs witness values time: {}", elapsed.as_millis());
+
+    Ok(values)
+}
+
+pub fn r1cs_values_with_precompute(
+    precompute: &StagedWitComp,
+    vars_size: usize,
+    inputs_map: &FxHashMap<String, Value>,
+) -> io::Result<Vec<FieldV>> {
+    // add r1cs witness to values
+    let timer = Instant::now();
+    let values = extend_r1cs_witness(vars_size, precompute, inputs_map);
+    // r1cs.check_all(&values);
+    assert_eq!(values.len(), vars_size);
+    let elapsed = timer.elapsed();
+    println!("generate r1cs witness values time: {}", elapsed.as_millis());
 
     Ok(values)
 }
