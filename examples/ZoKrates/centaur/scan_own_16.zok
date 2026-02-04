@@ -105,22 +105,14 @@ def main(private field[17] path, private field[17] path_dir, private field k, pr
   field rt_new = merkle_root(0, 0, 0, 0, 0, path_cb, path_dir_cb)
   field rt_prev = merkle_root(cb_j_nonce, cb_j_message_hash, cb_j_tag, cb_j_f, cb_j_h, path_cb, path_dir_cb)
 
-  field cb_prev_is_last_f = if cb_prev_is_last then 0 else 1 fi
-  field flag_f = if flag == 0 then 0 else if flag == 1 then 1 else 2 fi fi
-
-  // field cb_updated_check = if rt_prev == old_rt_cb && rt_new == new_rt_cb then 0 else 1 fi
-  // bool cb_same_check = old_rt_cb == new_rt_cb
-  // field verify_rt_cb =  if cb_prev_is_last then 0 else if flag == 0 then cb_updated_check else if flag == 1 then old_rt_cb - new_rt_cb else 1 fi fi fi
-  field verify_rt_cb = (1 - cb_prev_is_last_f) * 0 + (cb_prev_is_last_f) * (1 - flag_f) * (rt_prev - old_rt_cb) + (cb_prev_is_last_f) * (1 - flag_f) * (rt_new - new_rt_cb) + cb_prev_is_last_f * flag_f * (old_rt_cb - new_rt_cb)
-
-  // field verify_rt_sign = if cb_prev_is_last then root_sign - verify_sign_root()
+  bool verify_rt_cb =  if cb_prev_is_last then true else if flag == 0 then rt_prev == old_rt_cb && rt_new == new_rt_cb else old_rt_cb == new_rt_cb fi fi
 
   assert(verify_cb == 0)
   assert(verify_leaf)
   assert(verify_path == 0)
   assert(verify_st_update == 0)
   assert(verify_pending_cb)
-  assert(verify_rt_cb == 0)
+  assert(verify_rt_cb)
 
   return 0
 

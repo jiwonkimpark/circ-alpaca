@@ -15,7 +15,7 @@ modulus=289480223093290488558927462521719769633630564819416473796797427483933629
 
 function preprocess_r1cs {
     $BIN --field-custom-modulus $modulus $DIR/examples/ZoKrates/centaur/scan_new.zok r1cs --action spartan-setup --prover-key SCAN_NEW_P --verifier-key SCAN_NEW_V
-    $BIN --field-custom-modulus $modulus $DIR/examples/ZoKrates/centaur/scan_own_16_2.zok r1cs --action spartan-setup --prover-key SCAN_OWN_P --verifier-key SCAN_OWN_V
+    $BIN --field-custom-modulus $modulus $DIR/examples/ZoKrates/centaur/scan_own_$CALLBACK_CAPACITY.zok r1cs --action spartan-setup --prover-key SCAN_OWN_P --verifier-key SCAN_OWN_V
     $BIN --field-custom-modulus $modulus $DIR/examples/ZoKrates/centaur/well_formed_$BB_CAPACITY.zok r1cs --action spartan-setup --prover-key WELL_FORMED_P --verifier-key WELL_FORMED_V
 }
 
