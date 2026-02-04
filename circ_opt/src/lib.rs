@@ -159,8 +159,6 @@ pub enum BuiltinField {
     Bls12381,
     /// BN-254 scalar field
     Bn254,
-    /// Pallas scalar field
-    Pallas,
 }
 
 impl Default for BuiltinField {

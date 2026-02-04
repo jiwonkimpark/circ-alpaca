@@ -92,7 +92,6 @@ impl From<CircOpt> for CircCfg {
             match opt.field.builtin {
                 circ_opt::BuiltinField::Bls12381 => FieldT::FBls12381,
                 circ_opt::BuiltinField::Bn254 => FieldT::FBn254,
-                circ_opt::BuiltinField::Pallas => FieldT::FPallas,
             }
         };
         Self { opt, field }
