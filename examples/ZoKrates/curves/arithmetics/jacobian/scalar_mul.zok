@@ -1,0 +1,74 @@
+from "../../point" import Point
+from "../jacobian_point" import JacobianPoint
+from "convert" import to_jacobian, to_affine
+from "double" import jacobian_double
+from "add" import jacobian_mixed_add
+from "../weierstrass/negate" import point_negate
+
+// Scalar multiplication: s * pt
+// s is little-endian bit representation
+//
+// Strategy: initialize accumulator with pt (avoiding point-at-infinity handling).
+// This effectively adds an extra "1" to the scalar. We start doubling from 2·pt
+// and process bits s[1..N]. At the end, if s[0] was 0, we subtract pt to correct.
+//
+// All additions use mixed add (Jacobian + affine) since the addend is always
+// a power-of-2 multiple of the original affine point doubled in Jacobian,
+// converted back... BUT that would be expensive. Instead, we keep the doubling
+// chain in Jacobian and use full Jacobian+Jacobian add.
+//
+// Better approach: keep a separate affine doubling chain (cheap in constraints
+// since we only need it for the addend), or just use the dummy-point trick
+// with Jacobian throughout.
+//
+// Simplest high-performance approach: accumulator in Jacobian, double the
+// affine point externally, use mixed addition.
+//
+// Since the addend must stay affine for mixed add, we double it in affine.
+// Affine doubling costs ~5 constraints. Mixed add costs ~11. Select costs ~3.
+// Total per iteration: ~19. For N bits: 19N + ~5 (final conversion).
+//
+// With N=8: ~157 constraints. With N=256: ~4864.
+//
+// For MAXIMUM savings, do everything in Jacobian and convert once at the end.
+// Jacobian double: ~9 constraints. Jacobian full add: ~12. Select on 3 fields: ~3.
+// Total per iteration: ~24, but we avoid the affine double cost.
+// Actually affine double (~5) + mixed add (~11) = ~16 per iteration is cheaper.
+//
+// We'll use: affine doubling for the addend + mixed addition for accumulation.
+
+from "../weierstrass/double" import point_double as affine_double
+
+def point_scalar_multiplication<N>(Point pt, bool[N] s, field a) -> Point:
+    // Initialize accumulator as Jacobian(pt) — adds implicit +1 to scalar
+    JacobianPoint acc = to_jacobian(pt)
+
+    // Addend starts at 2·pt (affine)
+    Point addend = affine_double(pt, a)
+
+    for u32 i in 1..N do
+        // Compute the candidate sum
+        JacobianPoint added = jacobian_mixed_add(acc, addend)
+
+        // Conditional select: if s[i], take the sum; otherwise keep acc
+        acc = JacobianPoint {
+            x: if s[i] then added.x else acc.x fi,
+            y: if s[i] then added.y else acc.y fi,
+            z: if s[i] then added.z else acc.z fi
+        }
+
+        // Double the affine addend for next bit
+        addend = affine_double(addend, a)
+    endfor
+
+    // Correct for the implicit +1: if s[0] is false, subtract pt
+    Point neg_pt = point_negate(pt)
+    JacobianPoint corrected = jacobian_mixed_add(acc, neg_pt)
+    acc = JacobianPoint {
+        x: if s[0] then acc.x else corrected.x fi,
+        y: if s[0] then acc.y else corrected.y fi,
+        z: if s[0] then acc.z else corrected.z fi
+    }
+
+    // Single affine conversion at the end (~5 constraints)
+    return to_affine(acc)

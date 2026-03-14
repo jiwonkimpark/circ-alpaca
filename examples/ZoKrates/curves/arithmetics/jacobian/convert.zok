@@ -1,0 +1,16 @@
+from "../../point" import Point
+from "../jacobian_point" import JacobianPoint
+
+// Affine → Jacobian: (x, y) → (x, y, 1)
+def to_jacobian(Point pt) -> JacobianPoint:
+    return JacobianPoint { x: pt.x, y: pt.y, z: 1 }
+
+// Jacobian → Affine: (X, Y, Z) → (X/Z², Y/Z³)
+// Only call this on a non-infinity point (Z != 0)
+def to_affine(JacobianPoint pt) -> Point:
+    field z_inv = 1 / pt.z
+    field z_inv2 = z_inv * z_inv       // 1 constraint
+    field z_inv3 = z_inv2 * z_inv      // 1 constraint
+    field x = pt.x * z_inv2            // 1 constraint
+    field y = pt.y * z_inv3            // 1 constraint
+    return Point { x: x, y: y }

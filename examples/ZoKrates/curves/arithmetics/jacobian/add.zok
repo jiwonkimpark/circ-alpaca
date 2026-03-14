@@ -1,0 +1,41 @@
+// Mixed addition: Jacobian + Affine → Jacobian
+// This is cheaper than full Jacobian + Jacobian because the affine point has Z=1
+//
+// Given Jacobian (X1, Y1, Z1) and affine (x2, y2):
+//   U1 = X1
+//   U2 = x2 * Z1²
+//   S1 = Y1
+//   S2 = y2 * Z1³
+//   H  = U2 - U1
+//   R  = S2 - S1
+//   X3 = R² - H³ - 2·U1·H²
+//   Y3 = R·(U1·H² - X3) - S1·H³
+//   Z3 = Z1 · H
+//
+// Constraints: ~8 multiplications
+from "../jacobian_point" import JacobianPoint
+from "../../point" import Point
+
+
+def jacobian_mixed_add(JacobianPoint jp, Point ap) -> JacobianPoint:
+    field z_sq = jp.z * jp.z               // Z1²          (1)
+    field z_cu = z_sq * jp.z               // Z1³          (1)
+
+    field u2 = ap.x * z_sq                 // x2·Z1²       (1)
+    field s2 = ap.y * z_cu                 // y2·Z1³       (1)
+
+    field h = u2 - jp.x                    // H = U2 - U1  (free)
+    field r = s2 - jp.y                    // R = S2 - S1  (free)
+
+    field h_sq = h * h                     // H²           (1)
+    field h_cu = h_sq * h                  // H³           (1)
+
+    field u1_h_sq = jp.x * h_sq            // U1·H²        (1)
+
+    field x3 = r * r - h_cu - 2 * u1_h_sq // R² - H³ - 2·U1·H²  (1)
+
+    field y3 = r * (u1_h_sq - x3) - jp.y * h_cu  // R·(U1·H² - X3) - S1·H³  (2)
+
+    field z3 = jp.z * h                    // Z1·H         (1)
+
+    return JacobianPoint { x: x3, y: y3, z: z3 }

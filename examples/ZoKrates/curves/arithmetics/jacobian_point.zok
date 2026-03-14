@@ -1,0 +1,9 @@
+// Jacobian projective coordinates: (X, Y, Z)
+// Represents affine point (X/Z², Y/Z³)
+// Identity (point at infinity) is represented as Z = 0
+
+struct JacobianPoint {
+    field x
+    field y
+    field z
+}

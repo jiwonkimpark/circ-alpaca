@@ -1,0 +1,32 @@
+from "../jacobian_point" import JacobianPoint
+
+// Jacobian doubling: no division required
+// Formula (for curve y² = x³ + ax + b):
+//   A = Y1²
+//   B = 4 * X1 * A
+//   C = 8 * A²
+//   D = 3 * X1² + a * Z1⁴
+//   X3 = D² - 2B
+//   Y3 = D * (B - X3) - C
+//   Z3 = 2 * Y1 * Z1
+//
+// Constraints: ~7 multiplications
+
+def jacobian_double(JacobianPoint pt, field a) -> JacobianPoint:
+    field y_sq = pt.y * pt.y                // A = Y²           (1)
+    field b = 4 * pt.x * y_sq              // B = 4·X·A        (1)
+    field c = 8 * y_sq * y_sq              // C = 8·A²         (1)
+
+    field x_sq = pt.x * pt.x               //                   (1)
+    field z_sq = pt.z * pt.z               //                   (1)
+    field z_4 = z_sq * z_sq                // Z⁴                (1)
+    field d = 3 * x_sq + a * z_4           // D = 3X² + aZ⁴    (free: const muls + add)
+
+    field d_sq = d * d                      // D²                (1)
+    field x3 = d_sq - 2 * b                // X3 = D² - 2B     (free)
+
+    field y3 = d * (b - x3) - c            // Y3 = D(B-X3) - C (1)
+
+    field z3 = 2 * pt.y * pt.z             // Z3 = 2·Y·Z       (1)
+
+    return JacobianPoint { x: x3, y: y3, z: z3 }

@@ -1,0 +1,68 @@
+import "../poseidon_hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams
+from "../curves/arithmetics/weierstrass/scalar_mul" import point_scalar_multiplication
+from "../curves/arithmetics/weierstrass/add" import point_addition
+import "../../../third_party/ZoKrates/zokrates_stdlib/stdlib/utils/pack/bool/unpack256"
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+struct SchnorrSignature {
+    field e
+    field s
+}
+
+def unpack_to_be_bits(field f) -> bool[256]:
+    // unpack256 already returns big-endian, so no reversal needed for MSB-first
+    return unpack256(f)
+
+
+// Compute R' = s*G + e*PK using Shamir's trick (single loop)
+def generate_R_prime(Point pk, SchnorrSignature sign, CurveParams params) -> Point:
+    Point G = Point {
+        x: 28948022309329048855892746252171976963363056481941647379679742748393362948096,
+        y: 2
+    }
+
+    bool[256] s_bits = unpack_to_be_bits(sign.s)
+    bool[256] e_bits = unpack_to_be_bits(sign.e)
+
+    Point Gs = point_scalar_multiplication(G, s_bits, params.a)
+    Point pke = point_scalar_multiplication(pk, e_bits, params.a)
+
+    return point_addition(Gs, pke)
+
+
+def generate_e<N>(Point pk, Point R, field[N] msg) -> field:
+    field[N+4] hash_msg = [pk.x, pk.y, R.x, R.y, ...msg]
+    field block_hash = 0
+
+    for u32 i in 0..(N+4)/8 do
+        field[8] hash_inputs = [0; 8]
+        for u32 j in 0..8 do
+            hash_inputs[j] = hash_msg[i*8+j]
+        endfor
+        block_hash = poseidon(hash_inputs, DOMAIN_SEPARATOR_SIGNATURE)
+    endfor
+
+    u32 iter = (N+4)/8
+    u32 hash_input_len = N+4 - iter*8
+    field[hash_input_len] hash_inputs = [0; hash_input_len]
+    block_hash = if (N+4)%8 == 0 then block_hash else poseidon(hash_msg[iter*8..], DOMAIN_SEPARATOR_SIGNATURE) fi
+
+    return block_hash
+
+
+def verify<N>(Point pk, field[N] msg, SchnorrSignature sign, CurveParams params) -> field:
+    Point R_prime = generate_R_prime(pk, sign, params)
+    field e_prime = generate_e(pk, R_prime, msg)
+
+    // Compare e values via bit decomposition
+    bool[256] e_prime_bits = unpack_to_be_bits(e_prime)
+    bool[256] e_bits = unpack_to_be_bits(sign.e)
+    assert(e_prime_bits == e_bits)
+
+    return 1

@@ -1,24 +1,12 @@
 import "../poseidon_hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+from "../signature/schnorr" import SchnorrSignature, verify
 
 const u32 DOMAIN_SEPARATOR_HASH = 0
 const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
 const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
-
-
-def generate_hash(field idx, field nonce,  field message_hash,  field tag,  field args,  field h) -> field:
-    field[6] hash_inputs = [0; 6]
-    hash_inputs[0] = idx
-    hash_inputs[1] = nonce
-    hash_inputs[2] = message_hash
-    hash_inputs[3] = tag
-    hash_inputs[4] = args
-    hash_inputs[5] = h
-
-    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
-
-    return hash_output
-
 
 def generate_prf(field k,  field nonce,  field message_hash) -> field:
     field[3] prf_inputs = [0; 3]
@@ -31,52 +19,79 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def hash_of_leaf(field[4] leaf) -> field:
-    field hash_output = poseidon(leaf, DOMAIN_SEPARATOR_HASH)
+def hash_of_inv_entry(field nonce, field msg_hash, field tag, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
+    field[10] hash_inputs = [0; 10]
+    hash_inputs[0] = nonce
+    hash_inputs[1] = msg_hash
+    hash_inputs[2] = tag
+    hash_inputs[3] = args[0]
+    hash_inputs[4] = args[1]
+    hash_inputs[5] = h
+    hash_inputs[6] = ts
+    hash_inputs[7] = sign_r_x
+    hash_inputs[8] = sign_r_y
+    hash_inputs[9] = sign_s
 
-    return hash_output
-
-
-def hash_lr(field left, field right) -> field:
-    field[2] hash_inputs = [0; 2]
-    hash_inputs[0] = left
-    hash_inputs[1] = right
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
     return hash_output
 
 
-def merkle_root(field b_j_nonce, field b_j_msg_hash, field b_j_tag, field f, field[10] path, field[10] path_dir) -> field:
-    field[4] hash_inputs = [0; 4]
-    hash_inputs[0] = b_j_nonce
-    hash_inputs[1] = b_j_msg_hash
-    hash_inputs[2] = b_j_tag
-    hash_inputs[3] = f
-    field merkle_res = hash_of_leaf(hash_inputs)
+def verify_sig(field pk_x, field pk_y, field nonce, field msg_hash, field tag, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
+    Point pk = Point { x: pk_x, y: pk_y }
+    Point sign_R = Point { x: sign_r_x, y: sign_r_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
 
-    for field i in 0..10 do
-      merkle_res = if path_dir[i] == 0 then hash_lr(path[i], merkle_res) else hash_lr(merkle_res, path[i]) fi
-    endfor
+    field[7] sign_msg = [0; 7]
+    sign_msg[0] = nonce
+    sign_msg[1] = msg_hash
+    sign_msg[2] = tag
+    sign_msg[3] = args[0]
+    sign_msg[4] = args[1]
+    sign_msg[5] = h
+    sign_msg[6] = ts
 
-    return merkle_res
+    field result = verify(pk, sign_msg, sign, VESTA_PARAMS)
+
+    return result
 
 
-def main(private field h_j, private field k, private field b_j_idx, private field b_j_nonce, private field b_j_message_hash, private field b_j_tag, private field b_j_args, private field b_j_h, private field b_j_prev_idx, private field b_j_prev_nonce, private field b_j_prev_message_hash, private field b_j_prev_tag, private field b_j_prev_args, private field b_j_prev_h, private field st_update, private field st, private field rt, private field f, private field[10] path, private field[10] path_dir, private field lock) -> field:
-  assert(lock == 0)
+def main(private field pk_x, private field pk_y, private field k, private field inv_i_nonce, private field inv_i_msg_hash, private field inv_i_tag, private field[2] inv_i_args, private field inv_i_h, private field inv_i_ts, private field inv_i_sign_r_x, private field inv_i_sign_r_y, private field inv_i_sign_s, private field inv_prev_nonce, private field inv_prev_msg_hash, private field inv_prev_tag, private field[2] inv_prev_args, private field inv_prev_h, private field inv_prev_ts, private field inv_prev_sign_r_x, private field inv_prev_sign_r_y, private field inv_prev_sign_s, private field[4] st_i, private field[4] st_prev, private field lock) -> field:
+    assert(lock == 0)
 
-  field hash_res = generate_hash(b_j_prev_idx, b_j_prev_nonce, b_j_prev_message_hash, b_j_prev_tag, b_j_prev_args, b_j_prev_h)
-  assert(h_j == hash_res)
-  assert(b_j_h == hash_res)
+    field hash_of_prev = hash_of_inv_entry(inv_prev_nonce, inv_prev_msg_hash, inv_prev_tag, inv_prev_args, inv_prev_h, inv_prev_ts, inv_prev_sign_r_x, inv_prev_sign_r_y, inv_prev_sign_s)
+    assert(inv_i_h == hash_of_prev)
 
-  field merkle_res = merkle_root(b_j_nonce, b_j_message_hash, b_j_tag, f, path, path_dir)
-  field tag_res = generate_prf(k, b_j_nonce, b_j_message_hash)
-  field my_token = tag_res - b_j_tag // 0 if my token
+    field verify_sig_res = verify_sig(pk_x, pk_y, inv_i_nonce, inv_i_msg_hash, inv_i_tag, inv_i_args, inv_i_h, inv_i_ts, inv_i_sign_r_x, inv_i_sign_r_y, inv_i_sign_s)
+    assert(verify_sig_res == 1)
 
-  field verify_correct_update = if my_token != 0 then st_update - st else st_update - st - b_j_args fi
-  field verify_merkle_tree = if my_token == 0 then merkle_res - rt else 0 fi
+    bool should_consume_inv = generate_prf(k, inv_i_nonce, inv_i_msg_hash) == inv_i_tag
+    field is_update = if should_consume_inv then 1 else 0 fi
+    field arg_is_0 = if inv_i_args[0] == 0 then 1 else 0 fi
+    field arg_is_1 = if inv_i_args[0] == 1 then 1 else 0 fi
+    field arg_is_2 = if inv_i_args[0] == 2 then 1 else 0 fi
+    field arg_is_3 = if inv_i_args[0] == 3 then 1 else 0 fi
 
-  assert(verify_correct_update == 0)
-  assert(verify_merkle_tree == 0)
+    // enforce boolean values
+    assert(is_update * (1 - is_update) == 0)
+    assert(arg_is_0 * (1 - arg_is_0) == 0)
+    assert(arg_is_1 * (1 - arg_is_1) == 0)
+    assert(arg_is_2 * (1 - arg_is_2) == 0)
+    assert(arg_is_3 * (1 - arg_is_3) == 0)
 
-  return 0
+    field is_ban   = is_update * arg_is_0
+    field is_rep   = is_update * arg_is_1
+    field is_vote  = is_update * arg_is_2
+    field is_limit = is_update * arg_is_3
 
+    field expected_ban = is_ban * inv_i_args[1] + (1 - is_ban) * st_prev[0]
+    field expected_rep = is_rep * (inv_i_args[1] + st_prev[1]) + (1 - is_rep) * st_prev[1]
+    field expected_vote = is_vote * (inv_i_args[1] + st_prev[2]) + (1 - is_vote) * st_prev[2]
+    field expected_limit = is_limit * (st_prev[3] - inv_i_args[1]) + (1 - is_limit) * st_prev[3]
+
+    assert(st_i[0] == expected_ban)
+    assert(st_i[1] == expected_rep)
+    assert(st_i[2] == expected_vote)
+    assert(st_i[3] == expected_limit)
+
+    return 1

@@ -1,0 +1,27 @@
+from "double" import point_double
+from "add" import point_addition
+from "negate" import point_negate
+from "../../point" import Point
+from "../../params" import CurveParams
+
+
+// calculates s * pt
+// s is the little endian bit representation of field s
+// NEW: change the point to a projective point
+def point_scalar_multiplication<N>(Point pt, bool[N] s, field a) -> Point:
+    // start with a known nonzero point instead of infinity
+    // use the generator or the input point itself
+    // TODO: if pt is zero, then set acc as the generator
+    Point acc = pt // this adds an extra "1" to the scalar
+    Point addend = point_double(pt, a) // so start doubling from 2 * pt.
+
+    for u32 i in 1..N do
+        Point added = point_addition(acc, addend)
+        acc = if s[i] == true then added else acc fi
+        addend = point_double(addend, a)
+    endfor
+
+    acc = if s[0] then acc else point_addition(acc, point_negate(pt)) fi
+
+    return acc
+

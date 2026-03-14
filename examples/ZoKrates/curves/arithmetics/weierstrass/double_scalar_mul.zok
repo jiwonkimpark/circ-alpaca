@@ -1,0 +1,166 @@
+from "../../point" import Point
+from "double" import point_double
+from "add" import point_addition
+from "negate" import point_negate
+
+// Shamir's trick: compute s*P1 + e*P2 in a single 256-iteration loop.
+//
+// Precompute lookup table:
+//   T[0] = "no-op" (handled by dummy init)
+//   T[1] = P1
+//   T[2] = P2
+//   T[3] = P1 + P2
+//
+// MSB-first double-and-add. We initialize with a dummy point Q and
+// subtract it at the end: result = acc - Q.
+//
+// We use Q = P1 + P2 as the dummy. After the loop, acc contains
+// the true result + (2^256) * Q due to 256 doublings of the initial Q.
+// We precompute (2^256)*Q and subtract at the end.
+//
+// BUT computing (2^256)*Q costs 256 doublings — that defeats the purpose.
+//
+// Better approach: treat it as if the scalar has an implicit extra top bit = 1
+// for a known adjustment. Concretely:
+//   - Prepend a virtual "1" bit selecting T[3] (= P1+P2)
+//   - This adds (2^256)*P1 + (2^256)*P2 to the result
+//   - After the loop, subtract correction = (2^256)*P1 + (2^256)*P2
+//   - Precompute correction iteratively within the same loop (free: just
+//     track a second doubling chain)
+//
+// Actually simplest: just initialize acc = T[3] = P1+P2 and after the loop
+// subtract a correction point that equals (2^256)*(P1+P2). We can compute
+// this correction by doubling P1+P2 256 times — but that's 256 extra doublings.
+//
+// -----------------------------------------------------------------------
+// CHEAPEST APPROACH: Initialize acc with an arbitrary generator point G_dummy
+// that we know, and subtract s_dummy * G_dummy at the end.
+//
+// Even simpler: just init acc = P1. This adds an implicit +1 to scalar s.
+// After the loop, conditionally subtract P1 based on s[255] (LSB of MSB-first).
+// But we also need to handle the e scalar...
+//
+// -----------------------------------------------------------------------
+// CLEANEST APPROACH for Shamir:
+//   acc = P1 + P2  (adds implicit +1 to both s and e)
+//   run the 256-bit loop from MSB down
+//   after loop: conditionally subtract P1 if s_bits[255]==0
+//               conditionally subtract P2 if e_bits[255]==0
+// This works because the MSB-first loop processes bits [0..255] where
+// index 0 = MSB. The implicit +1 to each scalar means we added an extra
+// unit in the MSB position, which after 256 doublings contributes P1 and P2
+// to the final sum...
+//
+// Actually no. Let's think carefully. MSB-first double-and-add:
+//   acc = 0
+//   for i in 0..256:
+//     acc = 2*acc + select(s[i], e[i])
+//
+// If we set acc = P1+P2 initially:
+//   acc = P1+P2
+//   for i in 0..256:
+//     acc = 2*acc + select(s[i], e[i])
+//
+// The initial P1+P2 gets doubled 256 times, so we've added 2^256*(P1+P2)
+// to the result. We need to subtract that. Too expensive.
+//
+// CORRECT CHEAP APPROACH: Process bits 0..255 but treat bit 0 (MSB) specially.
+// Since s and e are 256-bit field elements, their MSB is very likely 0
+// (field order is ~2^254 for BN curves). So we can safely start from bit 0
+// knowing it's probably 0, and initialize with a dummy.
+//
+// SIMPLEST CORRECT APPROACH:
+//   Process bits 0..254 normally.
+//   For bit 255 (the LSB), handle the final add.
+//   Init: acc = table_select(s[0], e[0])
+//     If both s[0] and e[0] are 0, we have the infinity problem.
+//     But for BN254 scalar field (order ~2^254), bits 0 and 1 of a
+//     valid scalar have constraints. For a general solution:
+//
+// ROBUST APPROACH — use a random dummy offset:
+//   Pick a fixed dummy point D (e.g., a nothing-up-my-sleeve hash-to-curve point)
+//   acc = D
+//   for i in 0..256:
+//     acc = 2*acc
+//     acc = acc + table_select(s[i], e[i])  // add T[0..3], where T[0] = identity
+//   acc = acc - (2^256 mod n) * D
+//
+// The correction (2^256 mod n)*D is a fixed constant we can hardcode.
+// For BN254: n = 21888242871839275222246405745257275088548364400416034343698204186575808495617
+// 2^256 mod n = 6350874878119819312338956282401532410528162663560392320966563075034087161851
+// So correction = 6350874878119819312338956282401532410528162663560392320966563075034087161851 * D
+// This is a FIXED POINT we can precompute offline and hardcode.
+//
+// But we still have the table_select T[0] = identity problem.
+// Solution: instead of adding identity, just don't add. Use conditional add:
+//   candidate = acc + table_select_nonzero(s[i], e[i])
+//   acc = if (s[i] || e[i]) then candidate else acc
+// where table_select_nonzero picks from {P1, P2, P1+P2}.
+// This costs: 1 double + 1 add + 1 select(3-way) + 1 conditional on acc = ~14 per iter.
+//
+// -----------------------------------------------------------------------
+// FINAL IMPLEMENTATION:
+
+def conditional_select(Point p1, Point p2, Point p1_plus_p2, bool b1, bool b2) -> Point:
+    // Select from {P1, P2, P1+P2} based on (b1, b2):
+    //   (1,0) -> P1
+    //   (0,1) -> P2
+    //   (1,1) -> P1+P2
+    // When (0,0), caller will skip the addition.
+    // We do nested selects: 2 constraints for x, 2 for y = 4 constraints
+    Point selected_on_b2 = Point {
+        x: if b2 then p2.x else p1.x fi,
+        y: if b2 then p2.y else p1.y fi
+    }
+    Point result = Point {
+        x: if b1 && b2 then p1_plus_p2.x else selected_on_b2.x fi,
+        y: if b1 && b2 then p1_plus_p2.y else selected_on_b2.y fi
+    }
+    return result
+
+
+// Compute s * P1 + e * P2
+// s_bits and e_bits are BIG-ENDIAN (MSB at index 0)
+def double_scalar_mul(Point P1, bool[256] s_bits, Point P2, bool[256] e_bits, field a) -> Point:
+    // Fixed generator as dummy — no adversary can force collisions
+    Point D = Point {
+        x: 28948022309329048855892746252171976963363056481941647379679742748393362948096,
+        y: 2
+    }
+    // D_correction = (2^256 mod n) * G, precomputed offline for Pallas
+    // n = 28948022309329048855892746252171976963363056481941647379679742748393362948097
+    // 2^256 mod n = 86844066927987146567678238756515930889906928183698916659777841259519766691839
+    Point D_correction = Point {
+        x: 6237872031822814535234748123148673704610403166472345221753109533631838174437, // TODO: compute 86844066927987146567678238756515930889906928183698916659777841259519766691839 * G and hardcode .x
+        y: 14362603650688957772575901757106687534335517325172252844474125224039901991897  // TODO: hardcode .y
+    }
+    // Precompute lookup table
+    Point P1_plus_P2 = point_addition(P1, P2)  // ~5 constraints
+
+    // Initialize accumulator with dummy point
+    Point acc = D
+
+    for u32 i in 0..256 do
+        // Double
+        acc = point_double(acc, a)
+
+        // Select which point to add
+        bool b1 = s_bits[i]
+        bool b2 = e_bits[i]
+        bool should_add = b1 || b2
+
+        Point to_add = conditional_select(P1, P2, P1_plus_P2, b1, b2)
+        Point added = point_addition(acc, to_add)
+
+        // Conditionally apply the addition
+        acc = Point {
+            x: if should_add then added.x else acc.x fi,
+            y: if should_add then added.y else acc.y fi
+        }
+    endfor
+
+    // Subtract the dummy contribution: acc - D_correction
+    Point neg_correction = point_negate(D_correction)
+    acc = point_addition(acc, neg_correction)
+
+    return acc

@@ -1,0 +1,45 @@
+from "../../point" import Point
+from "../../params" import CurveParams
+
+// helper function for point_double
+// 3 * x^2 + a
+def x_prime(field x, field a) -> field:
+    field x_squared = x * x
+    field x_squared_times_3 = 3 * x_squared
+
+    return (x_squared_times_3 + a)
+
+
+// helper function for point_double
+// 2 * x1 + x2
+def x_star(field x1, field x2) -> field:
+    field x1_times_2 = 2 * x1
+    return (x1_times_2 + x2)
+
+
+// helper function for point_double
+// 2 * y
+def y_prime(field y) -> field:
+    return (2 * y)
+
+
+def point_double(Point pt, field a) -> Point:
+    // x' = 3x² + a  (1 constraint for x*x)
+    field x_sq = pt.x * pt.x
+    field x_p = 3 * x_sq + a
+
+    // 1 / (2y)  (1 constraint for the inverse)
+    field y_p_inv = 1 / (2 * pt.y)
+
+    // λ = (3x² + a) / (2y)
+    field mu = x_p * y_p_inv          // 1 constraint
+
+    // x3 = λ² - 2x
+    field mu_sq = mu * mu              // 1 constraint
+    field x3 = mu_sq - 2 * pt.x
+
+    // y3 = λ(x1 - x3) - y1
+    field y3_partial = pt.x - x3
+    field y3 = mu * y3_partial - pt.y  // 1 constraint
+
+    return Point{x: x3, y: y3}
