@@ -77,7 +77,7 @@ def main(private field pk_x, private field pk_y, \
 
     // assert lock
     field expected_lock = if is_first then 0 else 1 fi
-    //assert(lock == expected_lock)
+    assert(lock == expected_lock)
 
     // signature and timestamp check when is_first
     field verify_tail_sig = verify_inv_sig(pk_x, pk_y, tail_nonce, tail_msg_hash, tail_tag, tail_args, tail_h, tail_ts, tail_sign_r_x, tail_sign_r_y, tail_sign_s)
@@ -90,20 +90,20 @@ def main(private field pk_x, private field pk_y, \
     // hash of last entry should equal to obj_h when is_last
     field hash_of_last = hash_of_reg(reg_prev_nonce, reg_prev_msg_hash, reg_prev_tag, reg_prev_f, reg_prev_h)
     field expected_hash_of_last = if is_last then hash_of_last else obj_h fi
-    //assert(expected_hash_of_last == obj_h)
+    assert(expected_hash_of_last == obj_h)
 
     // signature of entry check
-    //assert(verify_entry_sig(pk_x, pk_y, entry, entry_sign_r_x, entry_sign_r_y, entry_sign_s) == 1)
+    assert(verify_entry_sig(pk_x, pk_y, entry, entry_sign_r_x, entry_sign_r_y, entry_sign_s) == 1)
 
     // If non_mem, timestamp check
     bool is_ts_same = tail_ts == entry[2]
     bool cond_select_ts_same = if flag == 0 then true else is_ts_same fi
-    //assert(cond_select_ts_same)
+    assert(cond_select_ts_same)
 
     // If mem, verify entry tok = tok_i
     bool is_tok_same = (entry[0] == reg_i_nonce) && (entry[1] == reg_i_msg_hash) && (entry[2] == reg_i_tag)
     bool cond_select_tok_same = if flag == 0 then is_tok_same else true fi
-    //assert(cond_select_tok_same)
+    assert(cond_select_tok_same)
 
     field ts   = entry[6]
     field arg0 = entry[3]
@@ -121,13 +121,13 @@ def main(private field pk_x, private field pk_y, \
     field expected_vote  = if is_vote  then arg1 + st_prev[2] else st_prev[2] fi
     field expected_limit = if is_limit then st_prev[3] - arg1 else st_prev[3] fi
 
-    //assert(st_i[0] == expected_ban)
-    //assert(st_i[1] == expected_rep)
-    //assert(st_i[2] == expected_vote)
-    //assert(st_i[3] == expected_limit)
+    assert(st_i[0] == expected_ban)
+    assert(st_i[1] == expected_rep)
+    assert(st_i[2] == expected_vote)
+    assert(st_i[3] == expected_limit)
 
     field hash_with_reg_i = hash_of_reg(reg_i_nonce, reg_i_msg_hash, reg_i_tag, reg_i_f, new_h_regCbs_prev)
     field expected_new_h_regCbs_i = if flag == 0 then new_h_regCbs_prev else hash_with_reg_i fi
-    //assert(expected_new_h_regCbs_i == new_h_regCbs_i)
+    assert(expected_new_h_regCbs_i == new_h_regCbs_i)
 
     return 1

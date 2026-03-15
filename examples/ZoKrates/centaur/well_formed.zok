@@ -1,4 +1,7 @@
 import "../poseidon_hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+from "../signature/schnorr" import SchnorrSignature, verify
 
 const u32 DOMAIN_SEPARATOR_HASH = 0
 const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
@@ -29,12 +32,8 @@ def generate_prf(field k,  field nonce,  field message_hash) -> field:
     return prf_output
 
 
-def hash_of_obj(field st,  field com_cbList,  field rt_cb,  field sn) -> field:
-    field[4] hash_inputs = [0; 4]
-    hash_inputs[0] = st
-    hash_inputs[1] = com_cbList
-    hash_inputs[2] = rt_cb
-    hash_inputs[3] = sn
+def hash_of_obj(field[4] st,  field h_regCbs,  field sn) -> field:
+    field[6] hash_inputs = [...st, h_regCbs, sn]
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
@@ -52,86 +51,56 @@ def generate_commitment(field hash_obj, field gamma) -> field:
     return com_output
 
 
-def hash_lr(field left, field right) -> field:
-    field[2] hash_inputs = [0; 2]
-    hash_inputs[0] = left
-    hash_inputs[1] = right
-    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+def verify_com_sig(field pk_x, field pk_y, field com, field sign_r_x, field sign_r_y, field sign_s) -> field:
+    Point pk = Point { x: pk_x, y: pk_y }
+    Point sign_R = Point { x: sign_r_x, y: sign_r_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
 
-    return hash_output
+    field[1] sign_msg = [com]
 
+    field result = verify(pk, sign_msg, sign, VESTA_PARAMS)
 
-def merkle_root(field nonce, field message_hash, field tag, field f, field h, field[10] path, field[10] path_dir) -> field:
-    field[5] hash_inputs = [0; 5]
-    hash_inputs[0] = nonce
-    hash_inputs[1] = message_hash
-    hash_inputs[2] = tag
-    hash_inputs[3] = f
-    hash_inputs[4] = h
-
-    bool is_empty = (nonce == 0) && (message_hash == 0) && (tag == 0) && (f == 0) && (h == 0)
-
-    field merkle_res = if is_empty then 0 else poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH) fi
-
-    for field i in 0..10 do
-      merkle_res = if path_dir[i] == 0 then hash_lr(path[i], merkle_res) else hash_lr(merkle_res, path[i]) fi
-    endfor
-
-    return merkle_res
+    return result
 
 
-def hash_msg(field m) -> field:
-    field[1] hash_inputs = [0; 1]
-    hash_inputs[0] = m
-    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
-
-    return hash_output
-
-
-def main(private field[16] path, private field[16] path_dir, private field k, private field obj_st, private field obj_com_cbList, private field obj_rt_cb, private field obj_sn, private field gamma, private field com_obj, private field new_obj_st, private field new_obj_com_cbList, private field new_obj_rt_cb, private field new_obj_sn, private field new_gamma, private field com_new_obj, private field st_updated, private field new_tok_nonce, private field new_tok_message_hash, private field new_tok_tag, private field rt_bb, private field old_sn, private field new_f, private field new_m, private field[10] path_cb, private field[10] path_dir_cb, private field e_n_idx) -> field:
-  field prf_res = generate_prf(k, new_tok_nonce, new_tok_message_hash)
-  field verify_prf = prf_res - new_tok_tag
-  assert(verify_prf == 0)
-
-  field msg_hash_res = hash_msg(new_m)
-  assert(msg_hash_res == new_tok_message_hash)
+def main(private field pk_x, private field pk_y, \
+    private field k, private field sn, \
+    private field new_tok_nonce, private field new_tok_msg_hash, private field new_tok_tag, private field new_f, private field new_m, \
+    private field[4] old_obj_st, private field old_obj_h_regCbs, private field old_obj_sn, \
+    private field[4] new_obj_st, private field new_obj_h_regCbs, private field new_obj_sn, \
+    private field old_gamma, private field old_com_obj, \
+    private field new_gamma, private field new_com_obj, \
+    private field[4] synced_st, private field synced_h_regCbs, \
+    private field old_com_sig_r_x, private field old_com_sig_r_y, private field old_com_sig_s) -> field:
+  field prf_res = generate_prf(k, new_tok_nonce, new_tok_msg_hash)
+  assert(prf_res == new_tok_tag)
 
   // verify new_obj well-formedness
-  field com_res = generate_hash(new_tok_nonce, new_tok_message_hash, new_tok_tag, new_f, obj_com_cbList)
-  field verify_com_cbList = com_res - new_obj_com_cbList
-  assert(verify_com_cbList == 0)
+  field expected_new_obj_h_regcbs = generate_hash(new_tok_nonce, new_tok_msg_hash, new_tok_tag, new_f, old_obj_h_regCbs)
+  assert(expected_new_obj_h_regcbs == new_obj_h_regCbs)
 
-  assert(new_obj_st == st_updated)
+  // verify that the new object has the state synced from the synchronization phase.
+  assert(new_obj_st[0] == synced_st[0])
+  assert(new_obj_st[1] == synced_st[1])
+  assert(new_obj_st[2] == synced_st[2])
+  assert(new_obj_st[3] == synced_st[3])
 
-  // cb
-  field non_member_res = merkle_root(0, 0, 0, 0, 0, path_cb, path_dir_cb)
-  assert(non_member_res == obj_rt_cb)
-
-  field member_res = merkle_root(new_tok_nonce, new_tok_message_hash, new_tok_tag, new_f, obj_com_cbList, path_cb, path_dir_cb)
-  assert(member_res == new_obj_rt_cb)
-
-  //assert(new_obj_idx == e_n_idx)
-
-  field hash_new_obj = hash_of_obj(new_obj_st, new_obj_com_cbList, new_obj_rt_cb, new_obj_sn)
-  field com_new_obj_res = generate_commitment(hash_new_obj, new_gamma)
-  field verify_com_new_obj = com_new_obj_res - com_new_obj
-  assert(verify_com_new_obj == 0)
+  // verify the new object's commitment opens to the new object
+  field hash_new_obj = hash_of_obj(new_obj_st, new_obj_h_regCbs, new_obj_sn)
+  field expected_new_com_obj = generate_commitment(hash_new_obj, new_gamma)
+  assert(expected_new_com_obj == new_com_obj)
 
   // verify the validity of obj
-  field hash_obj = hash_of_obj(obj_st, obj_com_cbList, obj_rt_cb, obj_sn)
-  field merkle_res = hash_obj
+  // sn = old_obj_sn
+  assert(sn == old_obj_sn)
 
-  for field i in 0..16 do
-    merkle_res = if path_dir[i] == 0 then hash_lr(path[i], merkle_res) else hash_lr(merkle_res, path[i]) fi
-  endfor
+  // verify that the old object's commitment is signed by the server
+  field verify_sig_res = verify_com_sig(pk_x, pk_y, old_com_obj, old_com_sig_r_x, old_com_sig_r_y, old_com_sig_s)
+  assert(verify_sig_res == 1)
 
-  field verify_path = rt_bb - merkle_res
-  assert(verify_path == 0)
+  // verify that the old object's commitment opens to old object
+  field hash_old_obj = hash_of_obj(old_obj_st, old_obj_h_regCbs, old_obj_sn)
+  field expected_old_com_obj = generate_commitment(hash_old_obj, old_gamma)
+  assert(expected_old_com_obj == old_com_obj)
 
-  field com_obj_res = generate_commitment(hash_obj, gamma)
-  field verify_com_obj = com_obj_res - com_obj
-  assert(verify_com_obj == 0)
-
-  assert(old_sn == obj_sn)
-
-  return 0
+  return 1
