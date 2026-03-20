@@ -40,6 +40,13 @@ def hash_of_obj(field id, field nonce, field[4] st,  field h_regCbs,  field sn, 
     return hash_output
 
 
+def hash_of_pk(field pk_x, field pk_y, field nonce) -> field:
+    field[3] hash_inputs = [pk_x, pk_y, nonce]
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
 // open(com, r) = k
 def generate_commitment(field hash_obj, field gamma) -> field:
     field[2] com_inputs = [0; 2]
@@ -73,6 +80,10 @@ def main(private field pk_x, private field pk_y, \
     private field new_gamma, private field new_com_obj, \
     private field[4] synced_st, private field synced_h_regCbs, \
     private field old_com_sig_r_x, private field old_com_sig_r_y, private field old_com_sig_s) -> field:
+
+  // verify the correctness of the forum
+  field expected_id = hash_of_pk(pk_x, pk_y, nonce)
+  assert(expected_id == id)
 
   field prf_res = generate_prf(k, new_tok_nonce, new_tok_msg_hash)
   assert(prf_res == new_tok_tag)
