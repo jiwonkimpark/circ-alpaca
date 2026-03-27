@@ -1,68 +1,160 @@
-import "../poseidon_hash/poseidon"
 from "../curves/point" import Point
 from "../curves/params" import CurveParams
-from "../curves/arithmetics/weierstrass/scalar_mul" import point_scalar_multiplication
-from "../curves/arithmetics/weierstrass/add" import point_addition
-import "../../../third_party/ZoKrates/zokrates_stdlib/stdlib/utils/pack/bool/unpack256"
-
-const u32 DOMAIN_SEPARATOR_HASH = 0
-const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
-const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
-const u32 DOMAIN_SEPARATOR_PRF = 3
-
-struct SchnorrSignature {
-    field e
-    field s
-}
-
-def unpack_to_be_bits(field f) -> bool[256]:
-    // unpack256 already returns big-endian, so no reversal needed for MSB-first
-    return unpack256(f)
+from "../curves/arithmetics/weierstrass/add" import point_addition as add
+from "../curves/arithmetics/weierstrass/double" import point_doubling as dbl
 
 
-// Compute R' = s*G + e*PK using Shamir's trick (single loop)
-def generate_R_prime(Point pk, SchnorrSignature sign, CurveParams params) -> Point:
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Negate a Weierstrass point: (x, y) -> (x, -y).  Zero constraints.
+def negate(Point p, field field_modulus) -> Point:
+    return Point { x: p.x, y: field_modulus - p.y }
+
+
+// ─── Shamir's Trick ───────────────────────────────────────────────────────────
+//
+// Computes k1·P + k2·Q in a single pass of 256 doublings + up to 256 additions,
+// vs two separate passes (512 doublings + ~256 additions) in the naive approach.
+//
+// Algorithm (MSB-first, simultaneous double-and-add):
+//   acc = O  (point at infinity, represented as sentinel below)
+//   for i in 255..=0:
+//       acc = 2·acc
+//       bit1 = k1[i],  bit2 = k2[i]
+//       if   bit1 && bit2  : acc += P + Q   (precomputed as PQ)
+//       elif bit1           : acc += P
+//       elif bit2           : acc += Q
+//       // else              : nothing
+//
+// ZoKrates has no dynamic branching, so we linearise with field arithmetic:
+//   choose(cond, a, b)  →  cond * a.coord + (1 - cond) * b.coord   (2 muls / coord)
+//
+// The "point at infinity" sentinel issue:
+//   ZoKrates curve libs typically crash or give wrong results if you call add()
+//   with the neutral element.  We sidestep this by starting acc = P (the first
+//   non-zero contribution) and tracking whether we have touched a real point yet
+//   via a boolean `started`.  Once started, every step is a proper add/double.
+//
+// Parameters
+//   P, Q        – the two base points
+//   k1, k2      – 256-bit scalars as LE bit arrays  (k1[0] = LSB, k1[255] = MSB)
+//   PQ          – caller-precomputed P + Q  (saves one add per loop iteration
+//                 where both bits are 1)
+//   params      – curve parameters (needed for add / dbl)
+//   field_mod   – the field modulus, used only for point negation
+//
+def shamir_double_mul(
+    Point P,
+    Point Q,
+    bool[256] k1,
+    bool[256] k2,
+    Point PQ,
+    CurveParams params,
+    field field_mod
+) -> Point:
+
+    // Work MSB-first: bit index 255 down to 0.
+    // k1/k2 are stored LE (index 0 = LSB), so the MSB is at index 255.
+
+    // We cannot represent "infinity" as a Point, so we delay the first real
+    // accumulation.  `started` tracks whether acc holds a valid curve point.
+    bool  started = false
+    // acc is garbage until `started` becomes true; the compiler still needs a
+    // concrete initial value, so use P (it will be overwritten before use).
+    Point acc = P
+
+    for u32 step in 0..256 do
+        u32 i = 255 - step           // MSB-first index
+
+        bool b1 = k1[i]
+        bool b2 = k2[i]
+        bool both = b1 && b2
+        bool any  = b1 || b2
+
+        // ── Double ────────────────────────────────────────────────────────────
+        // Only meaningful once we have a real point.
+        Point doubled = if started then dbl(acc, params.a) else acc fi
+
+        // ── Choose addend ─────────────────────────────────────────────────────
+        // addend = PQ if both, P if only b1, Q if only b2
+        // We build this with nested field muls to avoid if-chains.
+        field ax = if both  then PQ.x
+               else if b1   then P.x
+               else              Q.x  fi fi
+        field ay = if both  then PQ.y
+               else if b1   then P.y
+               else              Q.y  fi fi
+        Point addend = Point { x: ax, y: ay }
+
+        // ── Accumulate ────────────────────────────────────────────────────────
+        acc = if !started && any then
+                  addend                   // first real point: skip the add
+              else if started && any then
+                  add(doubled, addend)     // normal double-and-add step
+              else
+                  doubled                  // no bit set: just propagate double
+              fi fi
+
+        started = started || any
+    endfor
+
+    // If both scalars were zero the result should be the point at infinity.
+    // In practice Schnorr verification never calls us with zero scalars, so
+    // we leave that edge case as a caller responsibility.
+    return acc
+
+
+// ─── Schnorr verify (Shamir's edition) ───────────────────────────────────────
+//
+// Original equation:  s·G  ==  e·pk + R
+// Rewrite as:         s·G  -  e·pk  ==  R
+// i.e.:               s·G  +  (-e)·pk  ==  R
+//
+// We can therefore call shamir_double_mul(G, pk, s_bits, neg_e_bits) and
+// compare the result directly to sign.R.  One pass, ~half the doublings.
+//
+// The scalar -e mod r is computed by negating the *scalar* (not the point):
+//   neg_e = r - e,   where r is the curve order (scalar field modulus).
+// We then unpack neg_e into bits for the second scalar argument.
+//
+def verify_shamir<N>(
+    Point pk,
+    field[N] msg,
+    SchnorrSignature sign,
+    CurveParams params,
+    field scalar_field_modulus,   // curve order r, for scalar negation
+    field base_field_modulus      // Fq, for point negation (unused here, kept for symmetry)
+) -> field:
+
     Point G = Point {
         x: 28948022309329048855892746252171976963363056481941647379679742748393362948096,
         y: 2
     }
 
-    bool[256] s_bits = unpack_to_be_bits(sign.s)
-    bool[256] e_bits = unpack_to_be_bits(sign.e)
+    // 1. Hash to get e  (same as before)
+    field e = generate_e(pk, msg, sign)
 
-    Point Gs = point_scalar_multiplication(G, s_bits, params.a)
-    Point pke = point_scalar_multiplication(pk, e_bits, params.a)
+    // 2. Negate the scalar e so we can fold both muls into one Shamir pass.
+    //    -e mod r  ≡  r - e   (when e != 0, which poseidon output never is)
+    field neg_e = scalar_field_modulus - e
 
-    return point_addition(Gs, pke)
+    // 3. Unpack s and neg_e to LE bit arrays
+    bool[256] s_bits    = unpack_to_le_bits(sign.s)
+    bool[256] neg_e_bits = unpack_to_le_bits(neg_e)
 
+    // 4. Precompute G + pk  (used when both scalar bits are 1 in the same step)
+    Point G_plus_pk = add(G, pk, params.a)  // adjust signature to your add() API
 
-def generate_e<N>(Point pk, Point R, field[N] msg) -> field:
-    field[N+4] hash_msg = [pk.x, pk.y, R.x, R.y, ...msg]
-    field block_hash = 0
+    // 5. Single-pass double scalar mul: s·G + (-e)·pk
+    Point lhs = shamir_double_mul(
+        G, pk,
+        s_bits, neg_e_bits,
+        G_plus_pk,
+        params,
+        base_field_modulus
+    )
 
-    for u32 i in 0..(N+4)/8 do
-        field[8] hash_inputs = [0; 8]
-        for u32 j in 0..8 do
-            hash_inputs[j] = hash_msg[i*8+j]
-        endfor
-        block_hash = poseidon(hash_inputs, DOMAIN_SEPARATOR_SIGNATURE)
-    endfor
+    // 6. Compare result to R
+    field result = if lhs.x == sign.R.x && lhs.y == sign.R.y then 1 else 0 fi
 
-    u32 iter = (N+4)/8
-    u32 hash_input_len = N+4 - iter*8
-    field[hash_input_len] hash_inputs = [0; hash_input_len]
-    block_hash = if (N+4)%8 == 0 then block_hash else poseidon(hash_msg[iter*8..], DOMAIN_SEPARATOR_SIGNATURE) fi
-
-    return block_hash
-
-
-def verify<N>(Point pk, field[N] msg, SchnorrSignature sign, CurveParams params) -> field:
-    Point R_prime = generate_R_prime(pk, sign, params)
-    field e_prime = generate_e(pk, R_prime, msg)
-
-    // Compare e values via bit decomposition
-    bool[256] e_prime_bits = unpack_to_be_bits(e_prime)
-    bool[256] e_bits = unpack_to_be_bits(sign.e)
-    assert(e_prime_bits == e_bits)
-
-    return 1
+    return result

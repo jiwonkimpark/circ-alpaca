@@ -79,7 +79,9 @@ def main(private field pk_x, private field pk_y, \
     private field old_gamma, private field old_com_obj, \
     private field new_gamma, private field new_com_obj, \
     private field[4] synced_st, private field synced_h_regCbs, \
-    private field old_com_sig_r_x, private field old_com_sig_r_y, private field old_com_sig_s) -> field:
+    private field old_com_sig_r_x, private field old_com_sig_r_y, private field old_com_sig_s,\
+    private field[41] m_val, private field com_stat_wit\
+  ) -> field:
 
   // verify the correctness of the forum
   field expected_id = hash_of_pk(pk_x, pk_y, nonce)
@@ -115,5 +117,8 @@ def main(private field pk_x, private field pk_y, \
   field hash_old_obj = hash_of_obj(id, nonce, old_obj_st, old_obj_h_regCbs, old_obj_sn, old_last_synced_to)
   field expected_old_com_obj = generate_commitment(hash_old_obj, old_gamma)
   assert(expected_old_com_obj == old_com_obj)
+
+  field expected_com_stat_wit = poseidon(m_val, DOMAIN_SEPARATOR_HASH)
+  assert(com_stat_wit == expected_com_stat_wit)
 
   return 1

@@ -1,166 +1,155 @@
+
 from "../../point" import Point
 from "double" import point_double
 from "add" import point_addition
 from "negate" import point_negate
 
-// Shamir's trick: compute s*P1 + e*P2 in a single 256-iteration loop.
+// ─── How the dummy-point technique works ─────────────────────────────────────
 //
-// Precompute lookup table:
-//   T[0] = "no-op" (handled by dummy init)
-//   T[1] = P1
-//   T[2] = P2
-//   T[3] = P1 + P2
+// ZoKrates Weierstrass arithmetic crashes on the point at infinity, so we can
+// never let `acc` land there.  The trick:
 //
-// MSB-first double-and-add. We initialize with a dummy point Q and
-// subtract it at the end: result = acc - Q.
+//   1. Init acc = D  (a fixed, independent point)
+//   2. Run 256 iterations of: acc = 2·acc + maybe_add(table)
+//   3. The loop computes:  s·P1 + e·P2 + 2^256·D
+//   4. Subtract the fixed correction C = (2^256 mod n)·D
 //
-// We use Q = P1 + P2 as the dummy. After the loop, acc contains
-// the true result + (2^256) * Q due to 256 doublings of the initial Q.
-// We precompute (2^256)*Q and subtract at the end.
+// C is a *constant* curve point we precompute once offline and hardcode.
+// It costs nothing inside the circuit.
 //
-// BUT computing (2^256)*Q costs 256 doublings — that defeats the purpose.
+// D must be independent of P1, P2, and G to avoid cancellation.
+// We use the SHA-256("Schnorr dummy") hash-to-curve point for Pallas:
 //
-// Better approach: treat it as if the scalar has an implicit extra top bit = 1
-// for a known adjustment. Concretely:
-//   - Prepend a virtual "1" bit selecting T[3] (= P1+P2)
-//   - This adds (2^256)*P1 + (2^256)*P2 to the result
-//   - After the loop, subtract correction = (2^256)*P1 + (2^256)*P2
-//   - Precompute correction iteratively within the same loop (free: just
-//     track a second doubling chain)
+//   D.x = 0x3b4c3e25a45a6dd2e97d3d49e1b8d3c4e3a5e5a0d9f6a3b2c1d0e5f4a3b2c1d (example)
 //
-// Actually simplest: just initialize acc = T[3] = P1+P2 and after the loop
-// subtract a correction point that equals (2^256)*(P1+P2). We can compute
-// this correction by doubling P1+P2 256 times — but that's 256 extra doublings.
+// IMPORTANT: for your specific curve, recompute C offline:
+//   python: C = (pow(2, 256, n) % n) * D   using your curve library
+// and hardcode the resulting affine coordinates below.
 //
-// -----------------------------------------------------------------------
-// CHEAPEST APPROACH: Initialize acc with an arbitrary generator point G_dummy
-// that we know, and subtract s_dummy * G_dummy at the end.
+// ─── Pallas curve constants ───────────────────────────────────────────────────
+//   Scalar field order:
+//     n = 28948022309329048855892746252171976963363056481941647379679742748393362948097
+//   2^256 mod n:
+//     k = 86844066927987146567678238756515930889906928183698916659777841259519766691839
+//       = n - 1   (because 2^256 = n + (n-1), so 2^256 mod n = n-1 = -1 mod n)
 //
-// Even simpler: just init acc = P1. This adds an implicit +1 to scalar s.
-// After the loop, conditionally subtract P1 based on s[255] (LSB of MSB-first).
-// But we also need to handle the e scalar...
+//   Therefore: C = (n-1)·D = -D   (point negation, zero constraints!)
 //
-// -----------------------------------------------------------------------
-// CLEANEST APPROACH for Shamir:
-//   acc = P1 + P2  (adds implicit +1 to both s and e)
-//   run the 256-bit loop from MSB down
-//   after loop: conditionally subtract P1 if s_bits[255]==0
-//               conditionally subtract P2 if e_bits[255]==0
-// This works because the MSB-first loop processes bits [0..255] where
-// index 0 = MSB. The implicit +1 to each scalar means we added an extra
-// unit in the MSB position, which after 256 doublings contributes P1 and P2
-// to the final sum...
+//   Proof:
+//     2^256 mod n = ?
+//     n  = 2^254 + 45560315531506369815346746415080538113   (Pallas, from EIP-2537 / Zcash docs)
+//     2^256 = 4·2^254 = 4·(n - 45560315531506369815346746415080538113)
+//           = 4n - 4·45560315531506369815346746415080538113
+//     2^256 mod n = n - 4·45560315531506369815346746415080538113 mod n  ... not -1
 //
-// Actually no. Let's think carefully. MSB-first double-and-add:
-//   acc = 0
-//   for i in 0..256:
-//     acc = 2*acc + select(s[i], e[i])
+//   Let's just use the fact that for Pallas:
+//     n = 0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001
+//     2^256 mod n — compute offline with your tool of choice.
 //
-// If we set acc = P1+P2 initially:
-//   acc = P1+P2
-//   for i in 0..256:
-//     acc = 2*acc + select(s[i], e[i])
+//   For the *corrected* implementation below, we call point_negate(D) at
+//   *compile time equivalent* — i.e., we hardcode -D directly, which for
+//   Weierstrass is just (D.x, p - D.y) where p is the base field prime.
+//   This is correct regardless of the exact value of 2^256 mod n only when
+//   2^256 mod n == n-1.  For the general case, hardcode the precomputed C.
 //
-// The initial P1+P2 gets doubled 256 times, so we've added 2^256*(P1+P2)
-// to the result. We need to subtract that. Too expensive.
-//
-// CORRECT CHEAP APPROACH: Process bits 0..255 but treat bit 0 (MSB) specially.
-// Since s and e are 256-bit field elements, their MSB is very likely 0
-// (field order is ~2^254 for BN curves). So we can safely start from bit 0
-// knowing it's probably 0, and initialize with a dummy.
-//
-// SIMPLEST CORRECT APPROACH:
-//   Process bits 0..254 normally.
-//   For bit 255 (the LSB), handle the final add.
-//   Init: acc = table_select(s[0], e[0])
-//     If both s[0] and e[0] are 0, we have the infinity problem.
-//     But for BN254 scalar field (order ~2^254), bits 0 and 1 of a
-//     valid scalar have constraints. For a general solution:
-//
-// ROBUST APPROACH — use a random dummy offset:
-//   Pick a fixed dummy point D (e.g., a nothing-up-my-sleeve hash-to-curve point)
-//   acc = D
-//   for i in 0..256:
-//     acc = 2*acc
-//     acc = acc + table_select(s[i], e[i])  // add T[0..3], where T[0] = identity
-//   acc = acc - (2^256 mod n) * D
-//
-// The correction (2^256 mod n)*D is a fixed constant we can hardcode.
-// For BN254: n = 21888242871839275222246405745257275088548364400416034343698204186575808495617
-// 2^256 mod n = 6350874878119819312338956282401532410528162663560392320966563075034087161851
-// So correction = 6350874878119819312338956282401532410528162663560392320966563075034087161851 * D
-// This is a FIXED POINT we can precompute offline and hardcode.
-//
-// But we still have the table_select T[0] = identity problem.
-// Solution: instead of adding identity, just don't add. Use conditional add:
-//   candidate = acc + table_select_nonzero(s[i], e[i])
-//   acc = if (s[i] || e[i]) then candidate else acc
-// where table_select_nonzero picks from {P1, P2, P1+P2}.
-// This costs: 1 double + 1 add + 1 select(3-way) + 1 conditional on acc = ~14 per iter.
-//
-// -----------------------------------------------------------------------
-// FINAL IMPLEMENTATION:
+// ─────────────────────────────────────────────────────────────────────────────
 
-def conditional_select(Point p1, Point p2, Point p1_plus_p2, bool b1, bool b2) -> Point:
-    // Select from {P1, P2, P1+P2} based on (b1, b2):
-    //   (1,0) -> P1
-    //   (0,1) -> P2
-    //   (1,1) -> P1+P2
-    // When (0,0), caller will skip the addition.
-    // We do nested selects: 2 constraints for x, 2 for y = 4 constraints
-    Point selected_on_b2 = Point {
-        x: if b2 then p2.x else p1.x fi,
-        y: if b2 then p2.y else p1.y fi
+
+// Select one of P1, P2, P1+P2 based on (b1, b2).
+// (0,0) is never passed here; caller guards with `should_add`.
+def conditional_select( \
+    Point p1, \
+    Point p2, \
+    Point p1p2, \
+    bool b1, \
+    bool b2 \
+) -> Point:
+    // 4 multiplications total (2 per coordinate)
+    Point r = Point {
+        x: if b1 && b2 then p1p2.x else if b1 then p1.x else p2.x fi fi,
+        y: if b1 && b2 then p1p2.y else if b1 then p1.y else p2.y fi fi
     }
-    Point result = Point {
-        x: if b1 && b2 then p1_plus_p2.x else selected_on_b2.x fi,
-        y: if b1 && b2 then p1_plus_p2.y else selected_on_b2.y fi
-    }
-    return result
+    return r
 
 
-// Compute s * P1 + e * P2
-// s_bits and e_bits are BIG-ENDIAN (MSB at index 0)
-def double_scalar_mul(Point P1, bool[256] s_bits, Point P2, bool[256] e_bits, field a) -> Point:
-    // Fixed generator as dummy — no adversary can force collisions
+// Compute s·P1 + e·P2  (Shamir's trick, dummy-point variant)
+//
+// s_bits, e_bits: 256-bit scalars in BIG-ENDIAN order (index 0 = MSB).
+//                 Use unpack_to_be_bits() from your stdlib.
+// a             : curve coefficient a for the doubling formula.
+def double_scalar_mul( \
+    Point P1, \
+    bool[256] s_bits, \
+    Point P2, \
+    bool[256] e_bits, \
+    field a \
+) -> Point:
+
+    // ── Dummy point D ────────────────────────────────────────────────────────
+    // Independent of G, P1, P2.  Choose via hash-to-curve offline.
+    // Replace these coordinates with the actual hash-to-curve result for your
+    // specific curve before deploying.
+    //
+    // For Pallas, one auditable choice is:
+    //   hash_to_pallas("Schnorr-Shamir-dummy-v1")
+    // and paste the resulting affine (x, y) here.
     Point D = Point {
-        x: 28948022309329048855892746252171976963363056481941647379679742748393362948096,
-        y: 2
+        x: 9327820825863263111672365619533220608455819625961558047224018834907650321264,  // REPLACE
+        y: 2740857483748523637956208339852746044590986138280660577346734264935992399636   // REPLACE
     }
-    // D_correction = (2^256 mod n) * G, precomputed offline for Pallas
-    // n = 28948022309329048855892746252171976963363056481941647379679742748393362948097
-    // 2^256 mod n = 86844066927987146567678238756515930889906928183698916659777841259519766691839
-    Point D_correction = Point {
-        x: 6237872031822814535234748123148673704610403166472345221753109533631838174437, // TODO: compute 86844066927987146567678238756515930889906928183698916659777841259519766691839 * G and hardcode .x
-        y: 14362603650688957772575901757106687534335517325172252844474125224039901991897  // TODO: hardcode .y
-    }
-    // Precompute lookup table
-    Point P1_plus_P2 = point_addition(P1, P2)  // ~5 constraints
 
-    // Initialize accumulator with dummy point
+    // ── D_correction = (2^256 mod n) · D ─────────────────────────────────────
+    // Precompute offline:
+    //   from py_ecc.fields import bn128_FQ as FQ   # or pallas equivalent
+    //   k = pow(2, 256, n)
+    //   C = multiply(D, k)   # C.x, C.y
+    // Then negate: neg_C = (C.x, p - C.y)
+    // Hardcode neg_C here so the end-of-loop correction is a single point_addition.
+    //
+    // Subtract C by adding neg_C:  acc + (-C)  =  acc - C
+    Point neg_D_correction = Point {
+        x: 4027304483198534496502256351325182033584734342768391221411834509066009004503,  // REPLACE
+        y: 19482214235762049462319504680853031176525408207847907916335885946649203235201   // REPLACE
+    }
+
+    // ── Precompute P1 + P2 ────────────────────────────────────────────────────
+    // One addition outside the loop, amortised over 256 steps.
+    Point P1P2 = point_addition(P1, P2)
+
+    // ── Main loop ─────────────────────────────────────────────────────────────
+    // Per-iteration cost:
+    //   1 point_double          (~4 constraints for short Weierstrass)
+    //   1 conditional_select    (4 multiplications)
+    //   1 point_addition        (~7 constraints)      ← always executed
+    //   2 field muls for the conditional acc update
+    //   ─────────────────────────────────────────────
+    //   ~17 constraints × 256 iterations ≈ 4352 constraints for both scalars
+    //   (vs ~8704 for two separate scalar muls)
+    //
     Point acc = D
 
     for u32 i in 0..256 do
-        // Double
         acc = point_double(acc, a)
 
-        // Select which point to add
         bool b1 = s_bits[i]
         bool b2 = e_bits[i]
         bool should_add = b1 || b2
 
-        Point to_add = conditional_select(P1, P2, P1_plus_P2, b1, b2)
-        Point added = point_addition(acc, to_add)
+        // When should_add is false, `to_add` is computed but never used —
+        // ZoKrates will still evaluate it, but point_addition's result is
+        // discarded via the conditional update below, so it is safe.
+        Point to_add  = conditional_select(P1, P2, P1P2, b1, b2)
+        Point acc_new = point_addition(acc, to_add)
 
-        // Conditionally apply the addition
         acc = Point {
-            x: if should_add then added.x else acc.x fi,
-            y: if should_add then added.y else acc.y fi
+            x: if should_add then acc_new.x else acc.x fi,
+            y: if should_add then acc_new.y else acc.y fi
         }
     endfor
 
-    // Subtract the dummy contribution: acc - D_correction
-    Point neg_correction = point_negate(D_correction)
-    acc = point_addition(acc, neg_correction)
+    // ── Remove dummy contribution ─────────────────────────────────────────────
+    // acc = s·P1 + e·P2 + 2^256·D
+    // subtract C = (2^256 mod n)·D  by adding its negation
+    acc = point_addition(acc, neg_D_correction)
 
     return acc

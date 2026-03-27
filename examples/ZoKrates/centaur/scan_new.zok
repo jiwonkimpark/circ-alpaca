@@ -56,7 +56,7 @@ def verify_sig(field pk_x, field pk_y, field nonce, field msg_hash, field tag, f
     return result
 
 
-def main(private field pk_x, private field pk_y, private field k, private field inv_i_nonce, private field inv_i_msg_hash, private field inv_i_tag, private field[2] inv_i_args, private field inv_i_h, private field inv_i_ts, private field inv_i_sign_r_x, private field inv_i_sign_r_y, private field inv_i_sign_s, private field inv_prev_nonce, private field inv_prev_msg_hash, private field inv_prev_tag, private field[2] inv_prev_args, private field inv_prev_h, private field inv_prev_ts, private field inv_prev_sign_r_x, private field inv_prev_sign_r_y, private field inv_prev_sign_s, private field[4] st_i, private field[4] st_prev, private field lock) -> field:
+def main(private field pk_x, private field pk_y, private field k, private field inv_i_nonce, private field inv_i_msg_hash, private field inv_i_tag, private field[2] inv_i_args, private field inv_i_h, private field inv_i_ts, private field inv_i_sign_r_x, private field inv_i_sign_r_y, private field inv_i_sign_s, private field inv_prev_nonce, private field inv_prev_msg_hash, private field inv_prev_tag, private field[2] inv_prev_args, private field inv_prev_h, private field inv_prev_ts, private field inv_prev_sign_r_x, private field inv_prev_sign_r_y, private field inv_prev_sign_s, private field[4] st_i, private field[4] st_prev, private field lock, private field[41] m_val, private field com_stat_wit) -> field:
     assert(lock == 0)
 
     field hash_of_prev = hash_of_inv_entry(inv_prev_nonce, inv_prev_msg_hash, inv_prev_tag, inv_prev_args, inv_prev_h, inv_prev_ts, inv_prev_sign_r_x, inv_prev_sign_r_y, inv_prev_sign_s)
@@ -93,5 +93,8 @@ def main(private field pk_x, private field pk_y, private field k, private field 
     assert(st_i[1] == expected_rep)
     assert(st_i[2] == expected_vote)
     assert(st_i[3] == expected_limit)
+
+    field expected_com_stat_wit = poseidon(m_val, DOMAIN_SEPARATOR_HASH)
+    assert(com_stat_wit == expected_com_stat_wit)
 
     return 1

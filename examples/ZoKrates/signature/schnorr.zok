@@ -2,7 +2,9 @@ import "../poseidon_hash/poseidon"
 from "../curves/point" import Point
 from "../curves/params" import CurveParams
 from "../curves/arithmetics/weierstrass/scalar_mul" import point_scalar_multiplication as multiply
+from "../curves/arithmetics/weierstrass/double_scalar_mul" import double_scalar_mul
 from "../curves/arithmetics/weierstrass/add" import point_addition as add
+
 import "../../../third_party/ZoKrates/zokrates_stdlib/stdlib/utils/pack/bool/unpack256"
 
 
@@ -54,13 +56,15 @@ def unpack_to_le_bits(field f) -> bool[256]:
 def verify<N>(Point pk, field[N] msg, SchnorrSignature sign, CurveParams params) -> field:
     Point G = Point {x: 28948022309329048855892746252171976963363056481941647379679742748393362948096, y: 2 }
 
-    field e = generate_e(pk, msg, sign)
-    bool[256] e_le_bits = unpack_to_le_bits(e)
+    field e        = generate_e(pk, msg, sign)
+    field neg_e    = params.Fq - e        // -e mod n, zero constraints
 
-    bool[256] s_le_bits = unpack_to_le_bits(sign.s)
-    Point left_hand = get_sG(G, s_le_bits, params) // sG
-    Point right_hand = get_ex_plus_r_G(pk, e_le_bits, sign.R, params) // e * xG + rG = (ex + r)G
+    // Scalars in big-endian for double_scalar_mul
+    bool[256] s_be    = unpack256(sign.s)
+    bool[256] neg_e_be = unpack256(neg_e)
 
-    field result = if left_hand.x == right_hand.x && left_hand.y == right_hand.y then 1 else 0 fi
+    // s·G + (-e)·pk  should equal R
+    Point lhs = double_scalar_mul(G, s_be, pk, neg_e_be, params.a)
 
+    field result = if lhs.x == sign.R.x && lhs.y == sign.R.y then 1 else 0 fi
     return result
