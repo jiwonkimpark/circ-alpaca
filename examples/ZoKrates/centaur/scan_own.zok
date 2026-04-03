@@ -8,11 +8,12 @@ const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
 const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
 
-def generate_prf(field k,  field nonce,  field message_hash) -> field:
-    field[3] prf_inputs = [0; 3]
+def generate_prf(field k,  field nonce,  field message_hash, field msg_ts) -> field:
+    field[4] prf_inputs = [0; 4]
     prf_inputs[0] = k
     prf_inputs[1] = nonce
     prf_inputs[2] = message_hash
+    prf_inputs[3] = msg_ts
 
     field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
 
@@ -32,19 +33,20 @@ def hash_of_reg(field nonce, field msg_hash, field tag, field f, field h) -> fie
     return hash_output
 
 
-def verify_inv_sig(field pk_x, field pk_y, field nonce, field msg_hash, field tag, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
+def verify_inv_sig(field pk_x, field pk_y, field nonce, field msg_hash, field tag, field msg_ts, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
     Point pk = Point { x: pk_x, y: pk_y }
     Point sign_R = Point { x: sign_r_x, y: sign_r_y }
     SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
 
-    field[7] sign_msg = [0; 7]
+    field[8] sign_msg = [0; 8]
     sign_msg[0] = nonce
     sign_msg[1] = msg_hash
     sign_msg[2] = tag
-    sign_msg[3] = args[0]
-    sign_msg[4] = args[1]
-    sign_msg[5] = h
-    sign_msg[6] = ts
+    sign_msg[3] = msg_ts
+    sign_msg[4] = args[0]
+    sign_msg[5] = args[1]
+    sign_msg[6] = h
+    sign_msg[7] = ts
 
     field result = verify(pk, sign_msg, sign, VESTA_PARAMS)
 
@@ -52,7 +54,7 @@ def verify_inv_sig(field pk_x, field pk_y, field nonce, field msg_hash, field ta
 
 
 // Verify the signature of an entry
-def verify_entry_sig(field pk_x, field pk_y, field[7] entry, field sign_r_x, field sign_r_y, field sign_s) -> field:
+def verify_entry_sig(field pk_x, field pk_y, field[8] entry, field sign_r_x, field sign_r_y, field sign_s) -> field:
     Point pk = Point { x: pk_x, y: pk_y }
     Point sign_R = Point { x: sign_r_x, y: sign_r_y }
     SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
@@ -64,24 +66,25 @@ def verify_entry_sig(field pk_x, field pk_y, field[7] entry, field sign_r_x, fie
 
 def main(private field pk_x, private field pk_y, \
     private field k, private field obj_h, \
-    private field flag, private field[7] entry, private field entry_sign_r_x, private field entry_sign_r_y, private field entry_sign_s, \
-    private field tail_nonce, private field tail_msg_hash, private field tail_tag, private field[2] tail_args, private field tail_h, private field tail_ts, private field tail_sign_r_x, private field tail_sign_r_y, private field tail_sign_s, \
+    private field flag, private field[8] entry, private field entry_sign_r_x, private field entry_sign_r_y, private field entry_sign_s, \
+    private field tail_nonce, private field tail_msg_hash, private field tail_tag, private field tail_msg_ts, private field[2] tail_args, private field tail_h, private field tail_ts, private field tail_sign_r_x, private field tail_sign_r_y, private field tail_sign_s, \
     private field prevtail_ts, \
-    private field reg_i_nonce, private field reg_i_msg_hash, private field reg_i_tag, private field reg_i_f, private field reg_i_h, \
-    private field reg_prev_nonce, private field reg_prev_msg_hash, private field reg_prev_tag, private field reg_prev_f, private field reg_prev_h, \
+    private field reg_i_nonce, private field reg_i_msg_hash, private field reg_i_tag, private field reg_i_f, field reg_i_ts, \
+    private field reg_prev_nonce, private field reg_prev_msg_hash, private field reg_prev_tag, private field reg_prev_f, field reg_prev_ts, \
     private field[4] st_i, private field[4] st_prev, private field new_h_regCbs_i, private field new_h_regCbs_prev, private field lock,\
-    private field[41] m_val, private field com_stat_wit\
+    private field[45] m_val, private field com_stat_wit, \
+    private field h_regCbs_i, private field h_regCbs_prev \
     ) -> field:
 
-    bool is_first = (reg_prev_nonce == 0) && (reg_prev_msg_hash == 0) && (reg_prev_tag == 0) && (reg_prev_f == 0) && (reg_prev_h == 0)
-    bool is_last  = (reg_i_nonce == 0)    && (reg_i_msg_hash == 0)    && (reg_i_tag == 0)    && (reg_i_f == 0)    && (reg_i_h == 0)
+    bool is_first = (reg_prev_nonce == 0) && (reg_prev_msg_hash == 0) && (reg_prev_tag == 0) && (reg_prev_f == 0)
+    bool is_last  = (reg_i_nonce == 0)    && (reg_i_msg_hash == 0)    && (reg_i_tag == 0)    && (reg_i_f == 0)
 
     // assert lock
     field expected_lock = if is_first then 0 else 1 fi
     assert(lock == expected_lock)
 
     // signature and timestamp check when is_first
-    field verify_tail_sig = verify_inv_sig(pk_x, pk_y, tail_nonce, tail_msg_hash, tail_tag, tail_args, tail_h, tail_ts, tail_sign_r_x, tail_sign_r_y, tail_sign_s)
+    field verify_tail_sig = verify_inv_sig(pk_x, pk_y, tail_nonce, tail_msg_hash, tail_tag, tail_msg_ts, tail_args, tail_h, tail_ts, tail_sign_r_x, tail_sign_r_y, tail_sign_s)
     bool tail_sig_ok  = verify_tail_sig == 1
     bool tail_ts_ok   = prevtail_ts < tail_ts
     bool tail_all_ok  = tail_sig_ok && tail_ts_ok
@@ -89,27 +92,32 @@ def main(private field pk_x, private field pk_y, \
     assert(expected_verify_inv_sig)
 
     // hash of last entry should equal to obj_h when is_last
-    field hash_of_last = hash_of_reg(reg_prev_nonce, reg_prev_msg_hash, reg_prev_tag, reg_prev_f, reg_prev_h)
-    field expected_hash_of_last = if is_last then hash_of_last else obj_h fi
-    assert(expected_hash_of_last == obj_h)
+    bool expected_hash_of_last_check = if is_last then obj_h == h_regCbs_prev else true fi
+    assert(expected_hash_of_last_check)
+
+    field hash_until_reg = hash_of_reg(reg_i_nonce, reg_i_msg_hash, reg_i_tag, reg_i_f, h_regCbs_prev)
+    bool hash_of_reg_check = if is_last then true else hash_until_reg == h_regCbs_i fi
+    assert(hash_of_reg_check)
 
     // signature of entry check
-    assert(verify_entry_sig(pk_x, pk_y, entry, entry_sign_r_x, entry_sign_r_y, entry_sign_s) == 1)
+    field entry_sig_check = verify_entry_sig(pk_x, pk_y, entry, entry_sign_r_x, entry_sign_r_y, entry_sign_s)
+    bool verify_entry_sig_res = if is_last then true else entry_sig_check == 1 fi
+    assert(verify_entry_sig_res)
 
     // If non_mem, timestamp check
     bool is_ts_same = tail_ts == entry[2]
-    bool cond_select_ts_same = if flag == 0 then true else is_ts_same fi
+    bool cond_select_ts_same = if is_last then true else if flag == 0 then true else is_ts_same fi fi
     assert(cond_select_ts_same)
 
     // If mem, verify entry tok = tok_i
     bool is_tok_same = (entry[0] == reg_i_nonce) && (entry[1] == reg_i_msg_hash) && (entry[2] == reg_i_tag)
-    bool cond_select_tok_same = if flag == 0 then is_tok_same else true fi
+    bool cond_select_tok_same = if is_last then true else if flag == 0 then is_tok_same else true fi fi
     assert(cond_select_tok_same)
 
     field ts   = entry[6]
     field arg0 = entry[3]
     field arg1 = entry[4]
-    bool should_consume = generate_prf(k, entry[0], entry[1]) == entry[2]
+    bool should_consume = generate_prf(k, entry[0], entry[1], entry[3]) == entry[2]
     bool ts_in_range = (prevtail_ts < ts) && (ts <= tail_ts)
     bool is_update = should_consume && ts_in_range
     bool is_ban  = is_update && (arg0 == 0)
@@ -122,16 +130,18 @@ def main(private field pk_x, private field pk_y, \
     field expected_vote  = if is_vote  then arg1 + st_prev[2] else st_prev[2] fi
     field expected_limit = if is_limit then st_prev[3] - arg1 else st_prev[3] fi
 
-    assert(st_i[0] == expected_ban)
-    assert(st_i[1] == expected_rep)
-    assert(st_i[2] == expected_vote)
-    assert(st_i[3] == expected_limit)
+    bool ban_check = if is_last then true else st_i[0] == expected_ban fi
+    bool rep_check = if is_last then true else st_i[1] == expected_rep fi
+    bool vote_check = if is_last then true else st_i[2] == expected_vote fi
+    bool limit_check = if is_last then true else st_i[3] == expected_limit fi
+    assert(ban_check && rep_check && vote_check && limit_check)
 
     field hash_with_reg_i = hash_of_reg(reg_i_nonce, reg_i_msg_hash, reg_i_tag, reg_i_f, new_h_regCbs_prev)
     field expected_new_h_regCbs_i = if flag == 0 then new_h_regCbs_prev else hash_with_reg_i fi
-    assert(expected_new_h_regCbs_i == new_h_regCbs_i)
+    bool expected_new_h_regCbs_i_check = if is_last then true else expected_new_h_regCbs_i == new_h_regCbs_i fi
+    assert(expected_new_h_regCbs_i_check)
 
     field expected_com_stat_wit = poseidon(m_val, DOMAIN_SEPARATOR_HASH)
     assert(com_stat_wit == expected_com_stat_wit)
-    
+
     return 1

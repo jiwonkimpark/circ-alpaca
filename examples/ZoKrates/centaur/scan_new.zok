@@ -8,64 +8,75 @@ const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
 const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
 
-def generate_prf(field k,  field nonce,  field message_hash) -> field:
-    field[3] prf_inputs = [0; 3]
+def generate_prf(field k,  field nonce,  field message_hash, field msg_ts) -> field:
+    field[4] prf_inputs = [0; 4]
     prf_inputs[0] = k
     prf_inputs[1] = nonce
     prf_inputs[2] = message_hash
+    prf_inputs[3] = msg_ts
 
     field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
 
     return prf_output
 
 
-def hash_of_inv_entry(field nonce, field msg_hash, field tag, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
-    field[10] hash_inputs = [0; 10]
+def hash_of_inv_entry(field nonce, field msg_hash, field tag, field msg_ts, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
+    field[11] hash_inputs = [0; 11]
     hash_inputs[0] = nonce
     hash_inputs[1] = msg_hash
     hash_inputs[2] = tag
-    hash_inputs[3] = args[0]
-    hash_inputs[4] = args[1]
-    hash_inputs[5] = h
-    hash_inputs[6] = ts
-    hash_inputs[7] = sign_r_x
-    hash_inputs[8] = sign_r_y
-    hash_inputs[9] = sign_s
+    hash_inputs[3] = msg_ts
+    hash_inputs[4] = args[0]
+    hash_inputs[5] = args[1]
+    hash_inputs[6] = h
+    hash_inputs[7] = ts
+    hash_inputs[8] = sign_r_x
+    hash_inputs[9] = sign_r_y
+    hash_inputs[10] = sign_s
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
     return hash_output
 
 
-def verify_sig(field pk_x, field pk_y, field nonce, field msg_hash, field tag, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
+def verify_sig(field pk_x, field pk_y, field nonce, field msg_hash, field tag, field msg_ts, field[2] args, field h, field ts, field sign_r_x, field sign_r_y, field sign_s) -> field:
     Point pk = Point { x: pk_x, y: pk_y }
     Point sign_R = Point { x: sign_r_x, y: sign_r_y }
     SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
 
-    field[7] sign_msg = [0; 7]
+    field[8] sign_msg = [0; 8]
     sign_msg[0] = nonce
     sign_msg[1] = msg_hash
     sign_msg[2] = tag
-    sign_msg[3] = args[0]
-    sign_msg[4] = args[1]
-    sign_msg[5] = h
-    sign_msg[6] = ts
+    sign_msg[3] = msg_ts
+    sign_msg[4] = args[0]
+    sign_msg[5] = args[1]
+    sign_msg[6] = h
+    sign_msg[7] = ts
 
     field result = verify(pk, sign_msg, sign, VESTA_PARAMS)
 
     return result
 
 
-def main(private field pk_x, private field pk_y, private field k, private field inv_i_nonce, private field inv_i_msg_hash, private field inv_i_tag, private field[2] inv_i_args, private field inv_i_h, private field inv_i_ts, private field inv_i_sign_r_x, private field inv_i_sign_r_y, private field inv_i_sign_s, private field inv_prev_nonce, private field inv_prev_msg_hash, private field inv_prev_tag, private field[2] inv_prev_args, private field inv_prev_h, private field inv_prev_ts, private field inv_prev_sign_r_x, private field inv_prev_sign_r_y, private field inv_prev_sign_s, private field[4] st_i, private field[4] st_prev, private field lock, private field[41] m_val, private field com_stat_wit) -> field:
+def main(private field pk_x, private field pk_y, \
+    private field k, \
+    private field inv_i_nonce, private field inv_i_msg_hash, private field inv_i_tag, private field inv_i_msg_ts, private field[2] inv_i_args, private field inv_i_h, private field inv_i_ts, \
+    private field inv_i_sign_r_x, private field inv_i_sign_r_y, private field inv_i_sign_s, \
+    private field inv_prev_nonce, private field inv_prev_msg_hash, private field inv_prev_tag, private field inv_prev_msg_ts, private field[2] inv_prev_args, private field inv_prev_h, private field inv_prev_ts, \
+    private field inv_prev_sign_r_x, private field inv_prev_sign_r_y, private field inv_prev_sign_s, \
+    private field[4] st_i, private field[4] st_prev, \
+    private field lock, private field[45] m_val, private field com_stat_wit\
+    ) -> field:
     assert(lock == 0)
 
-    field hash_of_prev = hash_of_inv_entry(inv_prev_nonce, inv_prev_msg_hash, inv_prev_tag, inv_prev_args, inv_prev_h, inv_prev_ts, inv_prev_sign_r_x, inv_prev_sign_r_y, inv_prev_sign_s)
+    field hash_of_prev = hash_of_inv_entry(inv_prev_nonce, inv_prev_msg_hash, inv_prev_tag, inv_prev_msg_ts, inv_prev_args, inv_prev_h, inv_prev_ts, inv_prev_sign_r_x, inv_prev_sign_r_y, inv_prev_sign_s)
     assert(inv_i_h == hash_of_prev)
 
-    field verify_sig_res = verify_sig(pk_x, pk_y, inv_i_nonce, inv_i_msg_hash, inv_i_tag, inv_i_args, inv_i_h, inv_i_ts, inv_i_sign_r_x, inv_i_sign_r_y, inv_i_sign_s)
+    field verify_sig_res = verify_sig(pk_x, pk_y, inv_i_nonce, inv_i_msg_hash, inv_i_tag, inv_i_msg_ts, inv_i_args, inv_i_h, inv_i_ts, inv_i_sign_r_x, inv_i_sign_r_y, inv_i_sign_s)
     assert(verify_sig_res == 1)
 
-    bool should_consume_inv = generate_prf(k, inv_i_nonce, inv_i_msg_hash) == inv_i_tag
+    bool should_consume_inv = generate_prf(k, inv_i_nonce, inv_i_msg_hash, inv_i_msg_ts) == inv_i_tag
     field is_update = if should_consume_inv then 1 else 0 fi
     field arg_is_0 = if inv_i_args[0] == 0 then 1 else 0 fi
     field arg_is_1 = if inv_i_args[0] == 1 then 1 else 0 fi

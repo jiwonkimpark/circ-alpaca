@@ -8,33 +8,35 @@ const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
 const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
 const u32 DOMAIN_SEPARATOR_PRF = 3
 
-def generate_hash(field nonce,  field message_hash,  field tag,  field f,  field h) -> field:
-    field[5] hash_inputs = [0; 5]
+def generate_hash(field nonce,  field message_hash,  field tag, field msg_ts,  field f,  field h) -> field:
+    field[6] hash_inputs = [0; 6]
     hash_inputs[0] = nonce
     hash_inputs[1] = message_hash
     hash_inputs[2] = tag
-    hash_inputs[3] = f
-    hash_inputs[4] = h
+    hash_inputs[3] = msg_ts
+    hash_inputs[4] = f
+    hash_inputs[5] = h
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
     return hash_output
 
 
-def generate_prf(field k,  field nonce,  field message_hash) -> field:
-    field[3] prf_inputs = [0; 3]
+def generate_prf(field k,  field nonce,  field message_hash, field timestamp) -> field:
+    field[4] prf_inputs = [0; 4]
     prf_inputs[0] = k
     prf_inputs[1] = nonce
     prf_inputs[2] = message_hash
+    prf_inputs[3] = timestamp
 
     field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
 
     return prf_output
 
 
-def hash_of_obj(field id, field nonce, field[4] st,  field h_regCbs,  field sn, field last_synced_to) -> field:
-    field[9] hash_inputs = [id, nonce, ...st, h_regCbs, sn, last_synced_to]
-
+def hash_of_obj(field id, field nonce, field[4] st,  field h_regCbs,  field sn, field last_synced_to, field msg_ts) -> field:
+    field[10] hash_inputs = [id, nonce, ...st, h_regCbs, sn, last_synced_to, msg_ts]
+    //field[2] hash_inputs = [id, nonce]
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
     return hash_output
@@ -73,25 +75,28 @@ def verify_com_sig(field pk_x, field pk_y, field com, field sign_r_x, field sign
 def main(private field pk_x, private field pk_y, \
     private field k, private field sn, \
     private field id, private field nonce, \
-    private field new_tok_nonce, private field new_tok_msg_hash, private field new_tok_tag, private field new_f, private field new_m, \
-    private field[4] old_obj_st, private field old_obj_h_regCbs, private field old_obj_sn, private field old_last_synced_to, \
-    private field[4] new_obj_st, private field new_obj_h_regCbs, private field new_obj_sn, private field new_last_synced_to, \
+    private field new_tok_nonce, private field new_tok_msg_hash, private field new_tok_tag, private field new_tok_msg_ts, private field new_f, private field new_m, \
+    private field[4] old_obj_st, private field old_obj_h_regCbs, private field old_obj_sn, private field old_last_synced_to, private field old_obj_ts, \
+    private field[4] new_obj_st, private field new_obj_h_regCbs, private field new_obj_sn, private field new_last_synced_to, private field new_obj_ts, \
     private field old_gamma, private field old_com_obj, \
     private field new_gamma, private field new_com_obj, \
     private field[4] synced_st, private field synced_h_regCbs, \
     private field old_com_sig_r_x, private field old_com_sig_r_y, private field old_com_sig_s,\
-    private field[41] m_val, private field com_stat_wit\
+    private field[45] m_val, private field com_stat_wit\
   ) -> field:
 
   // verify the correctness of the forum
   field expected_id = hash_of_pk(pk_x, pk_y, nonce)
   assert(expected_id == id)
 
-  field prf_res = generate_prf(k, new_tok_nonce, new_tok_msg_hash)
+  // verify the token well-formedness
+  field prf_res = generate_prf(k, new_tok_nonce, new_tok_msg_hash, new_obj_ts)
   assert(prf_res == new_tok_tag)
+  bool new_msg_ts_check = if old_obj_ts == 0 then true else new_obj_ts > old_obj_ts fi
+  assert(new_msg_ts_check)
 
   // verify new_obj well-formedness
-  field expected_new_obj_h_regcbs = generate_hash(new_tok_nonce, new_tok_msg_hash, new_tok_tag, new_f, old_obj_h_regCbs)
+  field expected_new_obj_h_regcbs = generate_hash(new_tok_nonce, new_tok_msg_hash, new_tok_tag, new_obj_ts, new_f, synced_h_regCbs)
   assert(expected_new_obj_h_regcbs == new_obj_h_regCbs)
 
   // verify that the new object has the state synced from the synchronization phase.
@@ -101,7 +106,7 @@ def main(private field pk_x, private field pk_y, \
   assert(new_obj_st[3] == synced_st[3])
 
   // verify the new object's commitment opens to the new object
-  field hash_new_obj = hash_of_obj(id, nonce, new_obj_st, new_obj_h_regCbs, new_obj_sn, new_last_synced_to)
+  field hash_new_obj = hash_of_obj(id, nonce, new_obj_st, new_obj_h_regCbs, new_obj_sn, new_last_synced_to, new_obj_ts)
   field expected_new_com_obj = generate_commitment(hash_new_obj, new_gamma)
   assert(expected_new_com_obj == new_com_obj)
 
@@ -114,11 +119,11 @@ def main(private field pk_x, private field pk_y, \
   assert(verify_sig_res == 1)
 
   // verify that the old object's commitment opens to old object
-  field hash_old_obj = hash_of_obj(id, nonce, old_obj_st, old_obj_h_regCbs, old_obj_sn, old_last_synced_to)
+  field hash_old_obj = hash_of_obj(id, nonce, old_obj_st, old_obj_h_regCbs, old_obj_sn, old_last_synced_to, old_obj_ts)
   field expected_old_com_obj = generate_commitment(hash_old_obj, old_gamma)
   assert(expected_old_com_obj == old_com_obj)
 
   field expected_com_stat_wit = poseidon(m_val, DOMAIN_SEPARATOR_HASH)
   assert(com_stat_wit == expected_com_stat_wit)
 
-  return 1
+  return prf_res
