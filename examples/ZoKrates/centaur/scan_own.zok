@@ -20,13 +20,14 @@ def generate_prf(field k,  field nonce,  field message_hash, field msg_ts) -> fi
     return prf_output
 
 
-def hash_of_reg(field nonce, field msg_hash, field tag, field f, field h) -> field:
-    field[5] hash_inputs = [0; 5]
+def hash_of_reg(field nonce, field msg_hash, field tag, field msg_ts, field f, field h) -> field:
+    field[6] hash_inputs = [0; 6]
     hash_inputs[0] = nonce
     hash_inputs[1] = msg_hash
     hash_inputs[2] = tag
-    hash_inputs[3] = f
-    hash_inputs[4] = h
+    hash_inputs[3] = msg_ts
+    hash_inputs[4] = f
+    hash_inputs[5] = h
 
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
@@ -95,7 +96,7 @@ def main(private field pk_x, private field pk_y, \
     bool expected_hash_of_last_check = if is_last then obj_h == h_regCbs_prev else true fi
     assert(expected_hash_of_last_check)
 
-    field hash_until_reg = hash_of_reg(reg_i_nonce, reg_i_msg_hash, reg_i_tag, reg_i_f, h_regCbs_prev)
+    field hash_until_reg = hash_of_reg(reg_i_nonce, reg_i_msg_hash, reg_i_tag, reg_i_ts, reg_i_f, h_regCbs_prev)
     bool hash_of_reg_check = if is_last then true else hash_until_reg == h_regCbs_i fi
     assert(hash_of_reg_check)
 
@@ -110,13 +111,13 @@ def main(private field pk_x, private field pk_y, \
     assert(cond_select_ts_same)
 
     // If mem, verify entry tok = tok_i
-    bool is_tok_same = (entry[0] == reg_i_nonce) && (entry[1] == reg_i_msg_hash) && (entry[2] == reg_i_tag)
+    bool is_tok_same = (entry[0] == reg_i_nonce) && (entry[1] == reg_i_msg_hash) && (entry[2] == reg_i_tag) && (entry[3] == reg_i_ts)
     bool cond_select_tok_same = if is_last then true else if flag == 0 then is_tok_same else true fi fi
     assert(cond_select_tok_same)
 
-    field ts   = entry[6]
-    field arg0 = entry[3]
-    field arg1 = entry[4]
+    field ts   = entry[7]
+    field arg0 = entry[4]
+    field arg1 = entry[5]
     bool should_consume = generate_prf(k, entry[0], entry[1], entry[3]) == entry[2]
     bool ts_in_range = (prevtail_ts < ts) && (ts <= tail_ts)
     bool is_update = should_consume && ts_in_range
@@ -136,7 +137,7 @@ def main(private field pk_x, private field pk_y, \
     bool limit_check = if is_last then true else st_i[3] == expected_limit fi
     assert(ban_check && rep_check && vote_check && limit_check)
 
-    field hash_with_reg_i = hash_of_reg(reg_i_nonce, reg_i_msg_hash, reg_i_tag, reg_i_f, new_h_regCbs_prev)
+    field hash_with_reg_i = hash_of_reg(reg_i_nonce, reg_i_msg_hash, reg_i_tag, reg_i_ts, reg_i_f, new_h_regCbs_prev)
     field expected_new_h_regCbs_i = if flag == 0 then new_h_regCbs_prev else hash_with_reg_i fi
     bool expected_new_h_regCbs_i_check = if is_last then true else expected_new_h_regCbs_i == new_h_regCbs_i fi
     assert(expected_new_h_regCbs_i_check)
