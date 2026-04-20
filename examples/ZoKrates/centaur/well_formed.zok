@@ -34,8 +34,8 @@ def generate_prf(field k,  field nonce,  field message_hash, field timestamp) ->
     return prf_output
 
 
-def hash_of_obj(field id, field nonce, field[4] st,  field h_regCbs,  field sn, field last_synced_to, field msg_ts) -> field:
-    field[10] hash_inputs = [id, nonce, ...st, h_regCbs, sn, last_synced_to, msg_ts]
+def hash_of_obj(field k, field id, field nonce, field[4] st,  field h_regCbs,  field sn, field last_synced_to, field msg_ts) -> field:
+    field[11] hash_inputs = [k, id, nonce, ...st, h_regCbs, sn, last_synced_to, msg_ts]
     //field[2] hash_inputs = [id, nonce]
     field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
 
@@ -106,7 +106,7 @@ def main(private field pk_x, private field pk_y, \
   assert(new_obj_st[3] == synced_st[3])
 
   // verify the new object's commitment opens to the new object
-  field hash_new_obj = hash_of_obj(id, nonce, new_obj_st, new_obj_h_regCbs, new_obj_sn, new_last_synced_to, new_obj_ts)
+  field hash_new_obj = hash_of_obj(k, id, nonce, new_obj_st, new_obj_h_regCbs, new_obj_sn, new_last_synced_to, new_obj_ts)
   field expected_new_com_obj = generate_commitment(hash_new_obj, new_gamma)
   assert(expected_new_com_obj == new_com_obj)
 
@@ -119,7 +119,7 @@ def main(private field pk_x, private field pk_y, \
   assert(verify_sig_res == 1)
 
   // verify that the old object's commitment opens to old object
-  field hash_old_obj = hash_of_obj(id, nonce, old_obj_st, old_obj_h_regCbs, old_obj_sn, old_last_synced_to, old_obj_ts)
+  field hash_old_obj = hash_of_obj(k, id, nonce, old_obj_st, old_obj_h_regCbs, old_obj_sn, old_last_synced_to, old_obj_ts)
   field expected_old_com_obj = generate_commitment(hash_old_obj, old_gamma)
   assert(expected_old_com_obj == old_com_obj)
 
