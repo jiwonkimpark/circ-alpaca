@@ -66,8 +66,10 @@ def main(private field pk_x, private field pk_y, \
     private field inv_prev_nonce, private field inv_prev_msg_hash, private field inv_prev_tag, private field inv_prev_msg_ts, private field[2] inv_prev_args, private field inv_prev_h, private field inv_prev_ts, \
     private field inv_prev_sign_r_x, private field inv_prev_sign_r_y, private field inv_prev_sign_s, \
     private field[4] st_i, private field[4] st_prev, \
-    private field lock, private field[46] m_val, private field com_stat_wit\
+    private field lock, private field[47] m_val, private field com_stat_wit\
     ) -> field:
+    field joined = m_val[46]
+    assert(joined == 1)
     assert(lock == 0)
 
     field hash_of_prev = hash_of_inv_entry(inv_prev_nonce, inv_prev_msg_hash, inv_prev_tag, inv_prev_msg_ts, inv_prev_args, inv_prev_h, inv_prev_ts, inv_prev_sign_r_x, inv_prev_sign_r_y, inv_prev_sign_s)

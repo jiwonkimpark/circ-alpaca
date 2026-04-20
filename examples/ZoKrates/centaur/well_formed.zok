@@ -82,7 +82,7 @@ def main(private field pk_x, private field pk_y, \
     private field new_gamma, private field new_com_obj, \
     private field[4] synced_st, private field synced_h_regCbs, \
     private field old_com_sig_r_x, private field old_com_sig_r_y, private field old_com_sig_s,\
-    private field[45] m_val, private field com_stat_wit\
+    private field[47] m_val, private field com_stat_wit\
   ) -> field:
 
   // verify the correctness of the forum
