@@ -1,0 +1,93 @@
+import "../poseidon_hash/poseidon"
+from "../curves/point" import Point
+from "../curves/params" import CurveParams, VESTA_PARAMS
+from "../signature/schnorr" import SchnorrSignature, verify
+
+const u32 DOMAIN_SEPARATOR_HASH = 0
+const u32 DOMAIN_SEPARATOR_COMMITMENT = 1
+const u32 DOMAIN_SEPARATOR_SIGNATURE = 2
+const u32 DOMAIN_SEPARATOR_PRF = 3
+
+def generate_hash(field nonce,  field message_hash,  field tag, field msg_ts,  field f,  field h) -> field:
+    field[6] hash_inputs = [0; 6]
+    hash_inputs[0] = nonce
+    hash_inputs[1] = message_hash
+    hash_inputs[2] = tag
+    hash_inputs[3] = msg_ts
+    hash_inputs[4] = f
+    hash_inputs[5] = h
+
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+def generate_prf(field k,  field nonce,  field message_hash, field timestamp) -> field:
+    field[4] prf_inputs = [0; 4]
+    prf_inputs[0] = k
+    prf_inputs[1] = nonce
+    prf_inputs[2] = message_hash
+    prf_inputs[3] = timestamp
+
+    field prf_output = poseidon(prf_inputs, DOMAIN_SEPARATOR_PRF)
+
+    return prf_output
+
+
+def hash_of_obj(field k, field id, field nonce, field[4] st,  field h_regCbs,  field sn, field last_synced_to, field msg_ts) -> field:
+    field[11] hash_inputs = [k, id, nonce, ...st, h_regCbs, sn, last_synced_to, msg_ts]
+    //field[2] hash_inputs = [id, nonce]
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+def hash_of_pk(field pk_x, field pk_y, field nonce) -> field:
+    field[3] hash_inputs = [pk_x, pk_y, nonce]
+    field hash_output = poseidon(hash_inputs, DOMAIN_SEPARATOR_HASH)
+
+    return hash_output
+
+
+// open(com, r) = k
+def generate_commitment(field hash_obj, field gamma) -> field:
+    field[2] com_inputs = [0; 2]
+    com_inputs[0] = hash_obj
+    com_inputs[1] = gamma
+
+    field com_output = poseidon(com_inputs, DOMAIN_SEPARATOR_COMMITMENT)
+
+    return com_output
+
+
+def verify_com_sig(field pk_x, field pk_y, field com, field sign_r_x, field sign_r_y, field sign_s) -> field:
+    Point pk = Point { x: pk_x, y: pk_y }
+    Point sign_R = Point { x: sign_r_x, y: sign_r_y }
+    SchnorrSignature sign = SchnorrSignature { R: sign_R, s: sign_s }
+
+    field[1] sign_msg = [com]
+
+    field result = verify(pk, sign_msg, sign, VESTA_PARAMS)
+
+    return result
+
+
+def main(private field pk_x, private field pk_y, \
+    private field k, \
+    private field id, private field nonce, \
+    private field obj_k, private field lock, private field joined, \
+    private field[47] m_val, private field com_stat_wit\
+  ) -> field:
+
+  // verify the correctness of the forum
+  field expected_id = hash_of_pk(pk_x, pk_y, nonce)
+  assert(expected_id == id)
+
+  assert(obj_k == k)
+  assert(lock == 0)
+  assert(joined == 0)
+
+  field expected_com_stat_wit = poseidon(m_val, DOMAIN_SEPARATOR_HASH)
+  assert(com_stat_wit == expected_com_stat_wit)
+
+  return 1
